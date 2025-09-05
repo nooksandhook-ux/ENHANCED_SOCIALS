@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Club Details</h2>
+  <div class="card">Club info here</div>
+  <a href="{{ url_for('nooks_club.club_chat', club_id=club_id) }}" class="btn btn-info">Open Chat</a>
+  <form method="post" action="{{ url_for('nooks_club.create_post', club_id=club_id) }}">
+    <textarea name="post" class="form-control mb-2" placeholder="Write a post..."></textarea>
+    <button type="submit" class="btn btn-primary">Post</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}My Quotes - Nook & Hook{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>My Quotes</h2>
+                <div>
+                    <span class="badge badge-success fs-6 me-3">Balance: ₦{{ current_balance }}</span>
+                    <a href="{{ url_for('quotes.submit_quote') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Submit New Quote
+                    </a>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.pending.count }}</h4>
+                                    <p class="mb-0">Pending</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.verified.count }}</h4>
+                                    <p class="mb-0">Verified</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.rejected.count }}</h4>
+                                    <p class="mb-0">Rejected</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-times-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>₦{{ stats.verified.total_reward }}</h4>
+                                    <p class="mb-0">Total Earned</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-money-bill-wave fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link {% if not status_filter %}active{% endif %}" 
+                       href="{{ url_for('quotes.index') }}">All Quotes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == 'pending' %}active{% endif %}" 
+                       href="{{ url_for('quotes.index', status='pending') }}">Pending</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == 'verified' %}active{% endif %}" 
+                       href="{{ url_for('quotes.index', status='verified') }}">Verified</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == 'rejected' %}active{% endif %}" 
+                       href="{{ url_for('quotes.index', status='rejected') }}">Rejected</a>
+                </li>
+            </ul>
+
+            <!-- Quotes List -->
+            <div class="card">
+                <div class="card-body">
+                    {% if quotes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Book</th>
+                                        <th>Quote</th>
+                                        <th>Page</th>
+                                        <th>Status</th>
+                                        <th>Reward</th>
+                                        <th>Submitted</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for quote in quotes %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if quote.book.cover_url %}
+                                                <img src="{{ quote.book.cover_url }}" alt="Book cover" 
+                                                     class="me-2" style="width: 40px; height: 60px; object-fit: cover;">
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ quote.book.title }}</strong><br>
+                                                    <small class="text-muted">
+                                                        {% if quote.book.authors %}
+                                                            by {{ quote.book.authors|join(', ') }}
+                                                        {% endif %}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="quote-text" style="max-width: 300px;">
+                                                {% if quote.quote_text|length > 100 %}
+                                                    {{ quote.quote_text[:100] }}...
+                                                    <a href="#" class="text-primary" data-bs-toggle="modal" 
+                                                       data-bs-target="#quoteModal{{ loop.index }}">Read more</a>
+                                                {% else %}
+                                                    {{ quote.quote_text }}
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>{{ quote.page_number }}</td>
+                                        <td>
+                                            {% if quote.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif quote.status == 'verified' %}
+                                                <span class="badge bg-success">Verified</span>
+                                            {% elif quote.status == 'rejected' %}
+                                                <span class="badge bg-danger">Rejected</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if quote.status == 'verified' %}
+                                                <span class="text-success">₦{{ quote.reward_amount }}</span>
+                                            {% else %}
+                                                <span class="text-muted">₦{{ quote.reward_amount }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ quote.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    data-bs-toggle="modal" data-bs-target="#quoteModal{{ loop.index }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Quote Detail Modal -->
+                                    <div class="modal fade" id="quoteModal{{ loop.index }}" tabindex="-1">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Quote Details</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="row">
+                                                        <div class="col-md-8">
+                                                            <h6>Book: {{ quote.book.title }}</h6>
+                                                            {% if quote.book.authors %}
+                                                            <p class="text-muted">by {{ quote.book.authors|join(', ') }}</p>
+                                                            {% endif %}
+                                                            <p><strong>Page {{ quote.page_number }}</strong></p>
+                                                            <blockquote class="blockquote">
+                                                                <p>"{{ quote.quote_text }}"</p>
+                                                            </blockquote>
+                                                            <p><small class="text-muted">
+                                                                Submitted: {{ quote.submitted_at.strftime('%Y-%m-%d %H:%M') }}
+                                                            </small></p>
+                                                            {% if quote.status == 'rejected' and quote.rejection_reason %}
+                                                            <div class="alert alert-danger">
+                                                                <strong>Rejection Reason:</strong> {{ quote.rejection_reason }}
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            {% if quote.book.cover_url %}
+                                                            <img src="{{ quote.book.cover_url }}" alt="Book cover" 
+                                                                 class="img-fluid">
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if total_quotes > 20 %}
+                        <nav aria-label="Quotes pagination">
+                            <ul class="pagination justify-content-center">
+                                {% set total_pages = (total_quotes + 19) // 20 %}
+                                {% for page_num in range(1, total_pages + 1) %}
+                                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('quotes.index', page=page_num, status=status_filter) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-quote-left fa-3x text-muted mb-3"></i>
+                            <h4>No quotes yet</h4>
+                            <p class="text-muted">Start earning by submitting your first quote!</p>
+                            <a href="{{ url_for('quotes.submit_quote') }}" class="btn btn-primary">
+                                Submit Your First Quote
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh pending quotes every 30 seconds if on pending tab
+{% if status_filter == 'pending' %}
+setInterval(function() {
+    if (document.visibilityState === 'visible') {
+        location.reload();
+    }
+}, 30000);
+{% endif %}
+</script>
+{% endblock %}

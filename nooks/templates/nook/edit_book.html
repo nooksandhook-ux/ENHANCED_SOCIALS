@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Edit Book{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-warning"><i class="bi bi-pencil-square me-2"></i>Edit Book</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="title" class="form-label">Title *</label>
+            <input type="text" class="form-control" id="title" name="title" value="{{ book.title }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="authors" class="form-label">Authors *</label>
+            <input type="text" class="form-control" id="authors" name="authors" value="{{ book.authors | join(', ') }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="page_count" class="form-label">Page Count</label>
+            <input type="number" class="form-control" id="page_count" name="page_count" value="{{ book.page_count }}" min="1">
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3">{{ book.description }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="to_read" {% if book.status == 'to_read' %}selected{% endif %}>To Read</option>
+                <option value="reading" {% if book.status == 'reading' %}selected{% endif %}>Currently Reading</option>
+                <option value="finished" {% if book.status == 'finished' %}selected{% endif %}>Finished</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="pdf_file" class="form-label">Replace PDF (optional, max 10MB)</label>
+            <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept="application/pdf">
+            {% if book.pdf_path %}
+            <div class="form-text">Current PDF: <a href="/static/{{ book.pdf_path }}" target="_blank">View</a></div>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-warning"><i class="bi bi-save me-2"></i>Save Changes</button>
+        <a href="{{ url_for('nook.my_uploads') }}" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock %}

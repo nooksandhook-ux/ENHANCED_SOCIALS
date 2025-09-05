@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Add Book - Nook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-plus-circle me-2"></i>Add New Book
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Search Books -->
+                <div class="mb-4">
+                    <label for="search-query" class="form-label">Search Books</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search-query" 
+                               placeholder="Search by title, author, or ISBN...">
+                        <button class="btn btn-outline-secondary" type="button" onclick="searchBooks(document.getElementById('search-query').value)">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                    <small class="text-muted">Search Google Books to auto-populate book details</small>
+                </div>
+                
+                <!-- Search Results -->
+                <div id="book-search-results" class="row mb-4"></div>
+                
+                <hr>
+                
+                <!-- Manual Entry Form -->
+                <form method="POST" id="add-book-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="pdf_file" class="form-label">Upload Book (PDF only, max 10MB)</label>
+                        <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept="application/pdf">
+                        <div class="form-text">Optional: Upload your own book as a PDF file.</div>
+                    </div>
+                    <!-- Hidden fields for Google Books data -->
+                    <input type="hidden" id="google_books_id" name="google_books_id">
+                    <input type="hidden" id="cover_image" name="cover_image">
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="title" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="to_read">To Read</option>
+                                <option value="reading">Currently Reading</option>
+                                <option value="finished">Finished</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="authors" class="form-label">Authors *</label>
+                            <input type="text" class="form-control" id="authors" name="authors" 
+                                   placeholder="Separate multiple authors with commas" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="page_count" class="form-label">Page Count</label>
+                            <input type="number" class="form-control" id="page_count" name="page_count" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('nook.index') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-circle me-2"></i>Add Book
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Auto-search as user types
+let searchTimeout;
+document.getElementById('search-query').addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+    
+    if (query.length >= 3) {
+        searchTimeout = setTimeout(() => {
+            searchBooks(query);
+        }, 500);
+    } else if (query.length === 0) {
+        document.getElementById('book-search-results').innerHTML = '';
+    }
+});
+</script>
+{% endblock %}

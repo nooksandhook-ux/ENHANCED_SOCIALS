@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Club Chat</h2>
+  <div id="club-chat-box" data-club-id="{{ club_id }}">
+    <div id="chat-box" class="card mb-2" style="height:300px;overflow-y:auto;"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" class="form-control mb-2" placeholder="Type a message...">
+      <button class="btn btn-primary">Send</button>
+    </form>
+  </div>
+</div>
+{% block extra_scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/club_chat.js') }}"></script>
+{% endblock %}
+{% endblock %}

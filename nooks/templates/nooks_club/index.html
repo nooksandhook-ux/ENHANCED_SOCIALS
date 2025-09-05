@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Nooks Clubs</h2>
+  <a href="{{ url_for('nooks_club.create_club') }}" class="btn btn-primary">Create Club</a>
+  <div class="card-list">
+    <!-- Loop clubs here -->
+    <div class="card">Club Example</div>
+  </div>
+</div>
+{% endblock %}

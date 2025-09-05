@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Nooks {% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary">Welcome to Nook & Hook</h1>
+            <p class="lead text-muted">Your personal reading tracker and productivity timer</p>
+        </div>
+    </div>
+</div>
+
+
+<div class="row g-4">
+    <!-- Nook Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 shadow-sm border-0 nook-card">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="bi bi-book display-1 text-success"></i>
+                </div>
+                <h3 class="card-title fw-bold text-success">Nook</h3>
+                <p class="card-text text-muted mb-4">
+                    Track your reading journey, discover new books, and build lasting reading habits.
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('nook.index') }}" class="btn btn-success btn-lg">
+                        <i class="bi bi-book-half me-2"></i>Start Reading
+                    </a>
+                    <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success">
+                        <i class="bi bi-plus-circle me-2"></i>Add Book
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer bg-light border-0">
+                <small class="text-muted">
+                    <i class="bi bi-star-fill text-warning me-1"></i>
+                    Track progress, quotes, and takeaways
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hook Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 shadow-sm border-0 hook-card">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="bi bi-stopwatch display-1 text-info"></i>
+                </div>
+                <h3 class="card-title fw-bold text-info">Hook</h3>
+                <p class="card-text text-muted mb-4">
+                    Boost productivity with focused work sessions and the Pomodoro technique.
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('hook.timer') }}" class="btn btn-info btn-lg">
+                        <i class="bi bi-play-circle me-2"></i>Start Timer
+                    </a>
+                    <a href="{{ url_for('hook.history') }}" class="btn btn-outline-info">
+                        <i class="bi bi-clock-history me-2"></i>View History
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer bg-light border-0">
+                <small class="text-muted">
+                    <i class="bi bi-trophy-fill text-warning me-1"></i>
+                    Earn points and build streaks
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nooks Club Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 shadow-sm border-0 nooks-club-card">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="bi bi-people display-1 text-primary"></i>
+                </div>
+                <h3 class="card-title fw-bold text-primary">Nooks Club</h3>
+                <p class="card-text text-muted mb-4">
+                    Join or create book clubs, discuss, and read together with the community.
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('nooks_club.index') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-people-fill me-2"></i>Explore Clubs
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer bg-light border-0">
+                <small class="text-muted">
+                    <i class="bi bi-chat-dots text-info me-1"></i>
+                    Group reading, chat, and shared goals
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Modules Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 shadow-sm border-0 mini-modules-card">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="bi bi-lightbulb display-1 text-warning"></i>
+                </div>
+                <h3 class="card-title fw-bold text-warning">Mini Modules</h3>
+                <p class="card-text text-muted mb-4">
+                    Flashcards, quizzes, and more to boost your learning and retention.
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('mini_modules.index') }}" class="btn btn-warning btn-lg text-white">
+                        <i class="bi bi-lightning-charge me-2"></i>Try Mini Modules
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer bg-light border-0">
+                <small class="text-muted">
+                    <i class="bi bi-award text-success me-1"></i>
+                    Earn badges and points for participation
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h4 class="fw-bold">📚</h4>
+                        <p class="mb-0">Reading Tracker</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="fw-bold">⏱️</h4>
+                        <p class="mb-0">Productivity Timer</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="fw-bold">🏆</h4>
+                        <p class="mb-0">Gamification</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="fw-bold">📱</h4>
+                        <p class="mb-0">PWA Ready</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row mt-4">
+    <div class="col-12">
+        <h3 class="mb-3">Quick Actions</h3>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-graph-up me-2"></i>View Dashboard
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-plus-circle me-2"></i>Add New Book
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{{ url_for('hook.timer') }}" class="btn btn-outline-info w-100">
+                    <i class="bi bi-play-circle me-2"></i>Start Focus Session
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.nook-card:hover {
+    transform: translateY(-5px);
+    transition: transform 0.3s ease;
+}
+
+.hook-card:hover {
+    transform: translateY(-5px);
+    transition: transform 0.3s ease;
+}
+
+.display-1 {
+    font-size: 4rem;
+}
+</style>
+
+{% endblock %}

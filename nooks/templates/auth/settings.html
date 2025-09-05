@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Nook & Hook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-gear me-2"></i>Account Settings
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Preferences Form -->
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="theme" class="form-label">Theme</label>
+                            <select class="form-select" id="theme" name="theme">
+                                <option value="light" {% if user.preferences.theme == 'light' %}selected{% endif %}>Light</option>
+                                <option value="dark" {% if user.preferences.theme == 'dark' %}selected{% endif %}>Dark</option>
+                                <option value="retro" {% if user.preferences.theme == 'retro' %}selected{% endif %}>Retro</option>
+                                <option value="neon" {% if user.preferences.theme == 'neon' %}selected{% endif %}>Neon</option>
+                                <option value="anime" {% if user.preferences.theme == 'anime' %}selected{% endif %}>Anime</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="default_timer_duration" class="form-label">Default Timer Duration (minutes)</label>
+                            <input type="number" class="form-control" id="default_timer_duration" 
+                                   name="default_timer_duration" min="1" max="120" 
+                                   value="{{ user.preferences.default_timer_duration or 25 }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications" 
+                                       name="notifications" {% if user.preferences.notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="notifications">
+                                    Enable notifications
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="timer_sound" 
+                                       name="timer_sound" {% if user.preferences.timer_sound %}checked{% endif %}>
+                                <label class="form-check-label" for="timer_sound">
+                                    Enable timer sounds
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Save Settings
+                        </button>
+                    </div>
+                </form>
+                
+                <hr class="my-4">
+                
+                <!-- Change Password Form -->
+                <h5 class="mb-3">Change Password</h5>
+                <form method="POST" action="{{ url_for('auth.change_password') }}">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" 
+                               name="current_password" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new_password" 
+                                   name="new_password" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" 
+                                   name="confirm_password" required>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-key me-2"></i>Change Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
