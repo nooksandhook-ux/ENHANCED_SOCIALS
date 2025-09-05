@@ -1,0 +1,197 @@
+/* Custom styles for Nook & Hook */
+
+:root {
+    --nook-color: #198754;
+    --hook-color: #0dcaf0;
+    --primary-color: #0d6efd;
+}
+
+/* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Timer Styles */
+.timer-display {
+    font-size: 4rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.timer-controls .btn {
+    min-width: 120px;
+    margin: 0.5rem;
+}
+
+/* Progress Bars */
+.progress {
+    height: 8px;
+}
+
+/* Book Cover Styles */
+.book-cover {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Theme Styles */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #1a1a1a;
+    --bs-body-color: #ffffff;
+}
+
+/* Responsive Timer */
+@media (max-width: 768px) {
+    .timer-display {
+        font-size: 2.5rem;
+    }
+    
+    .timer-controls .btn {
+        min-width: 100px;
+        margin: 0.25rem;
+    }
+}
+
+/* Animation for timer */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.timer-active {
+    animation: pulse 2s infinite;
+}
+
+/* Custom button styles */
+.btn-nook {
+    background-color: var(--nook-color);
+    border-color: var(--nook-color);
+    color: white;
+}
+
+.btn-nook:hover {
+    background-color: #157347;
+    border-color: #146c43;
+    color: white;
+}
+
+.btn-hook {
+    background-color: var(--hook-color);
+    border-color: var(--hook-color);
+    color: black;
+}
+
+.btn-hook:hover {
+    background-color: #31d2f2;
+    border-color: #25cff2;
+    color: black;
+}
+
+/* Login and Register button styles */
+.btn-login, .btn-register {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    margin-left: 0.5rem;
+}
+
+.btn-login:hover, .btn-register:hover {
+    background-color: #0b5ed7;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Stats cards */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+}
+
+/* Book grid improvements */
+.book-grid .card {
+    height: 100%;
+}
+
+.book-grid .card-img-top {
+    height: 250px;
+    object-fit: cover;
+}
+
+/* Timer themes */
+.timer-theme-light {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.timer-theme-dark {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+}
+
+.timer-theme-retro {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+}
+
+.timer-theme-neon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.timer-theme-anime {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+/* PWA styles */
+.install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+/* Offline indicator */
+.offline-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #dc3545;
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    z-index: 1100;
+    display: none;
+}
+
+.offline .offline-indicator {
+    display: block;
+}
