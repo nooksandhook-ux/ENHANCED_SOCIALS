@@ -1,5 +1,6 @@
 # routes.py
 from flask import Blueprint
+from flask_login import login_required
 
 nook_bp = Blueprint('nook', __name__)
 
@@ -513,4 +514,5 @@ def calculate_reading_streak(user_id):
         current_date -= timedelta(days=1)
     
     return streak
+
 
