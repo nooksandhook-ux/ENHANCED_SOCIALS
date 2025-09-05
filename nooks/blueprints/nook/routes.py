@@ -1,3 +1,8 @@
+# routes.py
+from flask import Blueprint
+
+nook_bp = Blueprint('nook', __name__)
+
 @nook_bp.route('/edit_book/<book_id>', methods=['GET', 'POST'])
 @login_required
 def edit_book(book_id):
@@ -508,3 +513,4 @@ def calculate_reading_streak(user_id):
         current_date -= timedelta(days=1)
     
     return streak
+
