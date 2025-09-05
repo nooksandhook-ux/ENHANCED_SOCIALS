@@ -3,7 +3,8 @@ from bson import ObjectId
 from datetime import datetime
 from flask_login import login_required
 
-from . import nook_bp
+# __init__.py
+from .routes import nook_bp
 
 @nook_bp.route('/update_progress_ajax/<book_id>', methods=['POST'])
 @login_required
@@ -24,3 +25,4 @@ def update_progress_ajax(book_id):
         update['status'] = 'reading'
     current_app.mongo.db.books.update_one({'_id': ObjectId(book_id)}, {'$set': update})
     return jsonify({'success': True})
+
