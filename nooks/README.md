@@ -70,137 +70,139 @@ A comprehensive Flask web application that combines reading tracking (Nook) and 
 - **Offline Support**: Service Worker for offline functionality
 - **App Installation**: Install as native app on mobile/desktop
 - **Push Notifications**: Timer completion and streak reminders
-- **Responsive Design**: Mobile-first approach
-- **App Manifest**: Complete PWA configuration
-- **Caching Strategy**: Smart caching for performance
+   Create a `.env` file:
 
-### 👨‍💼 Advanced Admin Panel
-- **User Management**: View, edit, and manage all users
-- **System Analytics**: Comprehensive system statistics
-- **Content Moderation**: Monitor books, tasks, and user activity
-- **Reward Management**: Award custom points and manage badges
-- **System Health**: Monitor database and performance metrics
-- **Data Export**: System-wide data export capabilities
-- **User Statistics**: Detailed per-user analytics
+# NOOKSBRIDGE: Social Reading & Productivity Hub
+
+## Overview
+NOOKSBRIDGE is a modular Flask web application that combines social reading, productivity, and learning tools. Users can track their reading, join book clubs, participate in real-time discussions, create flashcards, take quizzes, and earn rewards—all in a clean, mobile-friendly interface.
+
+---
+
+## Features
+
+### 📚 Nook (Reading Tracker)
+- Add, track, and manage books
+- View reading stats and streaks
+- Upload custom book covers
+- Save and review favorite quotes
+
+### ⏱️ Hook (Productivity Timer)
+- Pomodoro-style timer for focused work
+- Track productivity sessions and streaks
+- View session history and analytics
+
+### 👥 Nooks Club (Book Clubs & Social)
+- Create or join book clubs with name, description, and topic
+- Club discussion threads and group reading goals
+- Real-time chatroom for each club (WebSocket-powered)
+- Club admin/moderator roles for content management
+- Member progress and contributions
+
+### 🧩 Mini Modules (Learning Tools)
+- **Flashcards:** Create, review, and organize flashcards (e.g., quote + meaning)
+- **Daily Quiz:** Take quizzes based on books or community challenges
+- **Quiz Leaderboard:** See top performers
+- **Quiz Review:** Review your answers and correct solutions
+- **Quiz Analytics:** Track your quiz stats, accuracy, and streaks
+- Modular design for easy addition of new mini-apps
+
+### 🏆 Rewards & Gamification
+- Earn points and badges for reading, productivity, and participation
+- Leaderboards for both reading/productivity and quiz performance
+- Progress tracking and achievements
+
+### 🔒 Authentication & Permissions
+- User registration, login, and profile management
+- All club and mini-module features require login
+- Club admin/moderator system for safe community management
+
+---
 
 ## Tech Stack
+- **Backend:** Flask, Flask-PyMongo, Flask-Login, Flask-SocketIO
+- **Database:** MongoDB (collections for users, books, clubs, posts, chat, flashcards, quizzes, progress, rewards, etc.)
+- **Frontend:** Jinja2 templates, Bootstrap 5, custom CSS/JS, Socket.IO (for real-time chat)
+- **Deployment:** Gunicorn, Procfile (Heroku/Render-ready), Python 3.10+
 
-- **Backend**: Flask, Python
-- **Database**: MongoDB with PyMongo
-- **Frontend**: Bootstrap 5, JavaScript, Jinja2 templates
-- **APIs**: Google Books API
-- **PWA**: Service Worker, Web App Manifest
-- **Charts**: Chart.js
-- **Deployment**: Render-ready with Gunicorn
+---
 
-## 🏗️ Modular Architecture
+## Setup & Installation
 
-The application is built with a modular blueprint architecture for scalability:
-
-```
-nook-hook-app/
-├── app.py                          # Main Flask application
-├── requirements.txt                # Python dependencies
-├── Procfile                       # Render deployment config
-├── runtime.txt                    # Python version
-├── .env                          # Environment variables
-├── blueprints/                   # Modular Flask blueprints
-│   ├── auth/                     # Authentication module
-│   │   ├── __init__.py
-│   │   └── routes.py            # Auth routes & logic
-│   ├── nook/                    # Reading tracker module
-│   │   ├── __init__.py
-│   │   └── routes.py           # Book management routes
-│   ├── hook/                   # Productivity timer module
-│   │   ├── __init__.py
-│   │   └── routes.py          # Timer routes & logic
-│   ├── rewards/               # Gamification system
-│   │   ├── __init__.py
-│   │   ├── routes.py         # Reward routes
-│   │   └── services.py       # Reward business logic
-│   ├── dashboard/            # Analytics dashboard
-│   │   ├── __init__.py
-│   │   └── routes.py        # Dashboard routes
-│   ├── themes/              # Theme management
-│   │   ├── __init__.py
-│   │   └── routes.py       # Theme customization
-│   ├── admin/              # Admin panel
-│   │   ├── __init__.py
-│   │   └── routes.py      # Admin management
-│   └── api/               # REST API endpoints
-│       ├── __init__.py
-│       └── routes.py     # API routes
-├── templates/            # Jinja2 templates (organized by feature)
-│   ├── base.html        # Base template with navigation
-│   ├── home.html        # Landing page
-│   ├── auth/           # Authentication templates
-│   ├── nook/          # Reading tracker templates
-│   ├── hook/         # Timer templates
-│   ├── rewards/     # Gamification templates
-│   ├── dashboard/  # Analytics templates
-│   └── themes/    # Theme management templates
-├── static/           # Static assets
-│   ├── css/
-│   │   ├── style.css      # Main styles
-│   │   └── themes.css     # Theme-specific styles
-│   ├── js/
-│   │   ├── app.js         # Main JavaScript
-│   │   └── timer.js       # Timer functionality
-│   ├── manifest.json      # PWA manifest
-│   ├── sw.js             # Service Worker
-│   └── images/          # Image assets
-└── utils/              # Utility modules
-    ├── decorators.py   # Custom decorators
-    └── google_books.py # Google Books API integration
-```
-
-## Installation & Setup
-
-### Prerequisites
-- Python 3.11+
-- MongoDB (local or cloud)
-- Google Books API key (optional)
-
-### Local Development
-
-1. **Clone and setup**:
-   ```bash
-   git clone <repository-url>
-   cd nook-hook-app
+1. **Clone the repository:**
+   ```sh
+   git clone <repo-url>
+   cd NOOKSBRIDGE
+   ```
+2. **Install dependencies:**
+   ```sh
    pip install -r requirements.txt
    ```
-
-2. **Environment Configuration**:
-   Create a `.env` file:
-   ```env
-   SECRET_KEY=your-secret-key-here
-   MONGO_URI=mongodb://localhost:27017/nook_hook_app
-   GOOGLE_BOOKS_API_KEY=your-google-books-api-key
-   PORT=5000
-   
-   # Admin User Configuration
-   ADMIN_USERNAME=admin
-   ADMIN_PASSWORD=admin123
-   ADMIN_EMAIL=admin@nookhook.com
-   ```
-
-3. **Database Setup**:
-   The application includes a comprehensive database initialization system:
-   
-   **Option 1: Automatic (Recommended)**
-   ```bash
-   python app.py
-   ```
-   The database initializes automatically when the app starts.
-   
-   **Option 2: Manual Initialization**
-   ```bash
+3. **Set environment variables:**
+   - `SECRET_KEY` (Flask secret)
+   - `MONGO_URI` (MongoDB connection string)
+   - (Optional) `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL`
+4. **Initialize the database:**
+   ```sh
    python init_db.py
+   python init_quotes_db.py
    ```
-   
-   **What gets initialized:**
-   - All required MongoDB collections
-   - Database indexes for optimal performance
+5. **Run the app:**
+   - For development (with Flask):
+     ```sh
+     python app.py
+     ```
+   - For real-time chat (SocketIO):
+     ```sh
+     python socketio_server.py
+     ```
+   - For production (with Gunicorn):
+     ```sh
+     gunicorn -k eventlet -w 1 socketio_server:socketio_app
+     ```
+
+---
+
+## Directory Structure (Key Parts)
+```
+app.py
+socketio_server.py
+models.py
+requirements.txt
+blueprints/
+    nooks_club/      # Book clubs, chat, posts
+    mini_modules/    # Flashcards, quizzes, mini-apps
+    ...
+templates/
+    nooks_club/
+    mini_modules/
+    ...
+static/
+    js/
+    css/
+    ...
+```
+
+---
+
+## Suggested Enhancements
+- **Notifications:** Real-time or email notifications for club activity, quiz results, etc.
+- **API for 3rd-party Mini-Apps:** Allow external developers to add new modules.
+- **Mobile App:** Wrap with React Native or Flutter for a native experience.
+- **Advanced Analytics:** More detailed stats, visualizations, and insights.
+- **OAuth Integration:** Google, Facebook, or Apple login.
+- **Content Moderation Tools:** Enhanced admin dashboard for managing clubs, posts, and users.
+- **Accessibility Improvements:** ARIA roles, keyboard navigation, and color contrast.
+
+---
+
+## License
+MIT License. See LICENSE file for details.
+
+---
+
+## Credits
+Developed by Warpiiv and contributors. Special thanks to the open-source community!
    - Default admin user from environment variables
    - Default themes and system data
    - Robust duplicate checking to prevent conflicts
