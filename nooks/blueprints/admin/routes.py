@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
 from bson import ObjectId
+from flask_login import login_required
 from datetime import datetime, timedelta
 from utils.decorators import login_required, admin_required
 from blueprints.rewards.services import RewardService
@@ -784,4 +785,5 @@ def get_system_configuration():
         }
 
     }
+
 
