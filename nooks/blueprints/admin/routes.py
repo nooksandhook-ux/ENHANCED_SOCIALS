@@ -1,3 +1,7 @@
+from flask import Blueprint
+
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
 @admin_bp.route('/books')
 @admin_required
 def books():
@@ -773,4 +777,5 @@ def get_system_configuration():
             'admin_panel': True,
             'pwa_support': True
         }
+
     }
