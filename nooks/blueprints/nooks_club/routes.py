@@ -9,7 +9,7 @@ from models import QuizQuestionModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-nooks_club_bp = Blueprint('nooks_club', __name__, template_folder='templates')
+nooks_club_bp = Blueprint('nooks_club', __name__)
 
 # --- Helper: Check if user is club admin/moderator ---
 def is_club_admin(club, user_id):
@@ -463,6 +463,7 @@ def get_question_by_id(question_id):
         logger.error(f"Error fetching question {question_id}: {str(e)}", exc_info=True)
         return None
 QuizQuestionModel.get_question_by_id = staticmethod(get_question_by_id)
+
 
 
 
