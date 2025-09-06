@@ -7,6 +7,11 @@ from bson import ObjectId
 from datetime import datetime
 from utils.decorators import login_required
 from models import UserModel  # Assuming UserModel is in a 'models' module
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__, template_folder='templates')
 
@@ -48,21 +53,48 @@ class ChangePasswordForm(FlaskForm):
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
-    if request.method == 'POST' and form.validate_on_submit():
-        email = form.email.data
-        password = form.password.data
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            email = form.email.data
+            password = form.password.data
 
-        user = UserModel.authenticate_user(email, password)
+            logger.info(f"Login attempt for email: {email}")
+            user = UserModel.authenticate_user(email, password)
 
-        if user:
-            session['user_id'] = str(user['_id'])
-            session['username'] = user['username']
-            session['email'] = user['email']
-            session['is_admin'] = user.get('is_admin', False)
-            flash('Login successful!', 'success')
-            return redirect(url_for('index'))
+            if user:
+                session['user_id'] = str(user['_id'])
+                session['username'] = user['username']
+                session['email'] = user['email']
+                session['is_admin'] = user.get('is_admin', False)
+                session.permanent = True  # Ensure session persists
+                logger.info(f"Login successful for user_id: {session['user_id']}")
+                flash('Login successful!', 'success')
+                return redirect(url_for('index'))
+            else:
+                # Check why authentication failed
+                user_exists = current_app.mongo.db.users.find_one({
+                    '$or': [
+                        {'email': {'$regex': f'^{email}$', '$options': 'i'}},
+                        {'username': {'$regex': f'^{email}$', '$options': 'i'}}
+                    ]
+                })
+                if not user_exists:
+                    logger.warning(f"Login failed for email: {email} - User not found")
+                    flash('Email or username not registered', 'error')
+                elif not check_password_hash(user_exists['password_hash'], password):
+                    logger.warning(f"Login failed for email: {email} - Incorrect password")
+                    flash('Incorrect password', 'error')
+                elif not user_exists.get('accepted_terms', False):
+                    logger.warning(f"Login failed for email: {email} - Terms not accepted")
+                    flash('You must accept the terms of service to log in', 'error')
+                else:
+                    logger.warning(f"Login failed for email: {email} - Unknown reason")
+                    flash('Authentication failed for unknown reason', 'error')
         else:
-            flash('Invalid email or password', 'error')
+            logger.warning(f"Login form validation failed: {form.errors}")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"{field}: {error}", 'error')
 
     return render_template('auth/login.html', form=form)
 
@@ -74,8 +106,10 @@ def register():
         email = form.email.data
         password = form.password.data
 
+        logger.info(f"Registration attempt for email: {email}")
         user_id, error = UserModel.create_user(username, email, password)
         if error:
+            logger.warning(f"Registration failed for email: {email} - {error}")
             flash(error, 'error')
             return render_template('auth/register.html', form=form)
 
@@ -89,6 +123,7 @@ def register():
             category='milestone'
         )
 
+        logger.info(f"Registration successful for user_id: {user_id}")
         flash('Registration successful! Please login.', 'success')
         return redirect(url_for('auth.login'))
 
@@ -97,6 +132,7 @@ def register():
 @auth_bp.route('/logout')
 def logout():
     session.clear()
+    logger.info("User logged out")
     flash('You have been logged out', 'info')
     return redirect(url_for('general.landing'))
 
@@ -142,11 +178,13 @@ def settings():
             {'$set': {'preferences': preferences}}
         )
         
+        logger.info(f"Settings updated for user_id: {user_id}")
         flash('Settings updated successfully!', 'success')
         return redirect(url_for('auth.settings'))
     
     # Flash validation errors if form submission fails
     if request.method == 'POST':
+        logger.warning(f"Settings form validation failed for user_id: {user_id} - {form.errors}")
         for field, errors in form.errors.items():
             for error in errors:
                 flash(f"{field}: {error}", 'error')
@@ -171,10 +209,12 @@ def change_password():
         user = current_app.mongo.db.users.find_one({'_id': user_id})
         
         if not user or 'password_hash' not in user:
+            logger.error(f"Change password failed for user_id: {user_id} - User account error")
             flash('User account error. Please contact support.', 'error')
             return redirect(url_for('auth.settings'))
         
         if not check_password_hash(user['password_hash'], form.current_password.data):
+            logger.warning(f"Change password failed for user_id: {user_id} - Incorrect current password")
             flash('Current password is incorrect', 'error')
             return redirect(url_for('auth.settings'))
         
@@ -184,10 +224,12 @@ def change_password():
             {'$set': {'password_hash': generate_password_hash(form.new_password.data)}}
         )
         
+        logger.info(f"Password changed successfully for user_id: {user_id}")
         flash('Password changed successfully!', 'success')
         return redirect(url_for('auth.settings'))
     
     # If form validation fails, flash errors
+    logger.warning(f"Change password form validation failed for user_id: {user_id} - {form.errors}")
     for field, errors in form.errors.items():
         for error in errors:
             flash(f"{field}: {error}", 'error')
