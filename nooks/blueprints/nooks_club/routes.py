@@ -24,7 +24,7 @@ def index():
     except Exception as e:
         logger.error(f"Error accessing clubs index for user {current_user.id}: {str(e)}", exc_info=True)
         flash("An error occurred while loading clubs. Please try again.", "danger")
-        return redirect(url_for('nook.index'))
+        return redirect(url_for('general.home'))
 
 @nooks_club_bp.route('/club/<club_id>')
 @login_required
@@ -463,4 +463,5 @@ def get_question_by_id(question_id):
         logger.error(f"Error fetching question {question_id}: {str(e)}", exc_info=True)
         return None
 QuizQuestionModel.get_question_by_id = staticmethod(get_question_by_id)
+
 
