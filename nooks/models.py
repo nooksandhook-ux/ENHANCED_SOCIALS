@@ -1,12 +1,6 @@
-"""
-Database Models and Initialization for Nook & Hook Application
-
-This module contains all database schemas, initialization functions,
-and setup utilities for the MongoDB-based Nook & Hook application.
-"""
-
 from flask import current_app
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 from datetime import datetime, timedelta
 from bson import ObjectId
 import os
@@ -16,6 +10,14 @@ import requests
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class User(UserMixin):
+    def __init__(self, user_data):
+        self.id = str(user_data['_id'])
+        self.username = user_data['username']
+        self.email = user_data['email']
+        self.is_admin = user_data.get('is_admin', False)
+        self.is_active = user_data.get('is_active', True)
 
 class DatabaseManager:
     """Manages database initialization and schema creation"""
@@ -86,13 +88,13 @@ class DatabaseManager:
 
             current_app.mongo.db.users.create_index("email", unique=True)
             current_app.mongo.db.users.create_index("created_at")
-            current_app.mongo.db.users.create_index("is_admin")  # Added for admin queries
+            current_app.mongo.db.users.create_index("is_admin")
             
             # Books collection indexes
             current_app.mongo.db.books.create_index([("user_id", 1), ("status", 1)])
             current_app.mongo.db.books.create_index([("user_id", 1), ("added_at", -1)])
             current_app.mongo.db.books.create_index("isbn", sparse=True)
-            current_app.mongo.db.books.create_index("pdf_path", sparse=True)  # Added for encrypted PDF queries
+            current_app.mongo.db.books.create_index("pdf_path", sparse=True)
             
             # Reading sessions indexes
             current_app.mongo.db.reading_sessions.create_index([("user_id", 1), ("date", -1)])
@@ -117,8 +119,8 @@ class DatabaseManager:
             
             # Activity log indexes
             current_app.mongo.db.activity_log.create_index([("user_id", 1), ("timestamp", -1)])
-            current_app.mongo.db.activity_log.create_index("timestamp", expireAfterSeconds=2592000)  # 30 days
-            current_app.mongo.db.activity_log.create_index("action")  # Added for action-based queries
+            current_app.mongo.db.activity_log.create_index("timestamp", expireAfterSeconds=2592000)
+            current_app.mongo.db.activity_log.create_index("action")
             
             # Quotes collection indexes
             current_app.mongo.db.quotes.create_index([("user_id", 1), ("status", 1)])
@@ -170,7 +172,7 @@ class DatabaseManager:
                 'password_hash': generate_password_hash(admin_password),
                 'is_admin': True,
                 'is_active': True,
-                'accepted_terms': True,  # Admin auto-accepts terms
+                'accepted_terms': True,
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
                 'total_points': 0,
@@ -420,7 +422,7 @@ class UserModel:
                 'password_hash': generate_password_hash(password),
                 'is_admin': kwargs.get('is_admin', False),
                 'is_active': kwargs.get('is_active', True),
-                'accepted_terms': kwargs.get('accepted_terms', False),  # Track terms agreement
+                'accepted_terms': kwargs.get('accepted_terms', False),
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
                 'last_login': None,
@@ -467,21 +469,18 @@ class UserModel:
             return None, str(e)
     
     @staticmethod
-    def authenticate_user(username, password):
+    def authenticate_user(identifier, password):
         """Authenticate user credentials"""
         try:
             user = current_app.mongo.db.users.find_one({
                 '$or': [
-                    {'username': username},
-                    {'email': username}
+                    {'username': {'$regex': f'^{identifier}$', '$options': 'i'}},
+                    {'email': {'$regex': f'^{identifier}$', '$options': 'i'}}
                 ],
                 'is_active': True
             })
             
             if user and check_password_hash(user['password_hash'], password):
-                if not user.get('accepted_terms', False):
-                    return None  # Deny login if terms not accepted
-                
                 current_app.mongo.db.users.update_one(
                     {'_id': user['_id']},
                     {'$set': {'last_login': datetime.utcnow()}}
@@ -590,7 +589,7 @@ class BookModel:
                 'finished_at': kwargs.get('finished_at'),
                 'updated_at': datetime.utcnow(),
                 'pdf_path': kwargs.get('pdf_path'),
-                'is_encrypted': kwargs.get('is_encrypted', False)  # Track encryption status
+                'is_encrypted': kwargs.get('is_encrypted', False)
             }
             
             result = current_app.mongo.db.books.insert_one(book_data)
@@ -907,7 +906,7 @@ USER_SCHEMA = {
     'password_hash': {'type': 'string', 'required': True},
     'is_admin': {'type': 'boolean', 'default': False},
     'is_active': {'type': 'boolean', 'default': True},
-    'accepted_terms': {'type': 'boolean', 'default': False},  # Added for terms agreement
+    'accepted_terms': {'type': 'boolean', 'required': True, 'default': False},
     'created_at': {'type': 'datetime', 'required': True},
     'updated_at': {'type': 'datetime', 'required': True},
     'last_login': {'type': 'datetime'},
@@ -925,8 +924,8 @@ BOOK_SCHEMA = {
     'total_pages': {'type': 'integer'},
     'current_page': {'type': 'integer'},
     'added_at': {'type': 'datetime', 'required': True},
-    'pdf_path': {'type': 'string'},  # Path to encrypted PDF
-    'is_encrypted': {'type': 'boolean', 'default': False}  # Track encryption status
+    'pdf_path': {'type': 'string'},
+    'is_encrypted': {'type': 'boolean', 'default': False}
 }
 
 TASK_SCHEMA = {
