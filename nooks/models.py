@@ -52,137 +52,6 @@ class DatabaseManager:
             'clubs', 'club_posts', 'club_chat_messages',
             'flashcards', 'quiz_questions', 'quiz_answers', 'user_progress'
         ]
-# --- Nooks Club & Mini Modules Models ---
-
-class ClubModel:
-    @staticmethod
-    def create_club(name, description, topic, creator_id, **kwargs):
-        club = {
-            'name': name,
-            'description': description,
-            'topic': topic,
-            'creator_id': creator_id,
-            'members': [creator_id],
-            'created_at': datetime.utcnow(),
-            'admins': [creator_id],
-            'goals': [],
-            'shared_quotes': [],
-            'is_active': True,
-            **kwargs
-        }
-        return current_app.mongo.db.clubs.insert_one(club)
-
-    @staticmethod
-    def add_member(club_id, user_id):
-        return current_app.mongo.db.clubs.update_one({'_id': ObjectId(club_id)}, {'$addToSet': {'members': user_id}})
-
-    @staticmethod
-    def add_admin(club_id, user_id):
-        return current_app.mongo.db.clubs.update_one({'_id': ObjectId(club_id)}, {'$addToSet': {'admins': user_id}})
-
-    @staticmethod
-    def get_club(club_id):
-        return current_app.mongo.db.clubs.find_one({'_id': ObjectId(club_id)})
-
-    @staticmethod
-    def get_all_clubs():
-        return list(current_app.mongo.db.clubs.find({'is_active': True}))
-
-class ClubPostModel:
-    @staticmethod
-    def create_post(club_id, user_id, content):
-        post = {
-            'club_id': ObjectId(club_id),
-            'user_id': user_id,
-            'content': content,
-            'created_at': datetime.utcnow(),
-            'comments': [],
-            'likes': []
-        }
-        return current_app.mongo.db.club_posts.insert_one(post)
-
-    @staticmethod
-    def get_posts(club_id):
-        return list(current_app.mongo.db.club_posts.find({'club_id': ObjectId(club_id)}).sort('created_at', -1))
-
-class ClubChatMessageModel:
-    @staticmethod
-    def send_message(club_id, user_id, message):
-        msg = {
-            'club_id': ObjectId(club_id),
-            'user_id': user_id,
-            'message': message,
-            'timestamp': datetime.utcnow()
-        }
-        return current_app.mongo.db.club_chat_messages.insert_one(msg)
-
-    @staticmethod
-    def get_messages(club_id, limit=50):
-        return list(current_app.mongo.db.club_chat_messages.find({'club_id': ObjectId(club_id)}).sort('timestamp', -1).limit(limit))
-
-class FlashcardModel:
-    @staticmethod
-    def create_flashcard(user_id, front, back, tags=None):
-        card = {
-            'user_id': user_id,
-            'front': front,
-            'back': back,
-            'tags': tags or [],
-            'created_at': datetime.utcnow(),
-            'review_count': 0
-        }
-        return current_app.mongo.db.flashcards.insert_one(card)
-
-    @staticmethod
-    def get_user_flashcards(user_id):
-        return list(current_app.mongo.db.flashcards.find({'user_id': user_id}))
-
-class QuizQuestionModel:
-    @staticmethod
-    def create_question(question, options, answer, creator_id, tags=None):
-        q = {
-            'question': question,
-            'options': options,
-            'answer': answer,
-            'creator_id': creator_id,
-            'tags': tags or [],
-            'created_at': datetime.utcnow()
-        }
-        return current_app.mongo.db.quiz_questions.insert_one(q)
-
-    @staticmethod
-    def get_daily_questions(limit=5):
-        return list(current_app.mongo.db.quiz_questions.aggregate([{'$sample': {'size': limit}}]))
-
-class QuizAnswerModel:
-    @staticmethod
-    def submit_answer(user_id, question_id, answer, is_correct):
-        ans = {
-            'user_id': user_id,
-            'question_id': ObjectId(question_id),
-            'answer': answer,
-            'is_correct': is_correct,
-            'submitted_at': datetime.utcnow()
-        }
-        return current_app.mongo.db.quiz_answers.insert_one(ans)
-
-    @staticmethod
-    def get_user_answers(user_id):
-        return list(current_app.mongo.db.quiz_answers.find({'user_id': user_id}))
-
-class UserProgressModel:
-    @staticmethod
-    def update_progress(user_id, module, data):
-        return current_app.mongo.db.user_progress.update_one(
-            {'user_id': user_id, 'module': module},
-            {'$set': {'data': data, 'updated_at': datetime.utcnow()}},
-            upsert=True
-        )
-
-    @staticmethod
-    def get_progress(user_id, module):
-        return current_app.mongo.db.user_progress.find_one({'user_id': user_id, 'module': module})
-        
         existing_collections = current_app.mongo.db.list_collection_names()
         
         for collection in collections:
@@ -405,6 +274,134 @@ class UserProgressModel:
         except Exception as e:
             logger.error(f"Error initializing default data: {str(e)}")
 
+class ClubModel:
+    @staticmethod
+    def create_club(name, description, topic, creator_id, **kwargs):
+        club = {
+            'name': name,
+            'description': description,
+            'topic': topic,
+            'creator_id': creator_id,
+            'members': [creator_id],
+            'created_at': datetime.utcnow(),
+            'admins': [creator_id],
+            'goals': [],
+            'shared_quotes': [],
+            'is_active': True,
+            **kwargs
+        }
+        return current_app.mongo.db.clubs.insert_one(club)
+
+    @staticmethod
+    def add_member(club_id, user_id):
+        return current_app.mongo.db.clubs.update_one({'_id': ObjectId(club_id)}, {'$addToSet': {'members': user_id}})
+
+    @staticmethod
+    def add_admin(club_id, user_id):
+        return current_app.mongo.db.clubs.update_one({'_id': ObjectId(club_id)}, {'$addToSet': {'admins': user_id}})
+
+    @staticmethod
+    def get_club(club_id):
+        return current_app.mongo.db.clubs.find_one({'_id': ObjectId(club_id)})
+
+    @staticmethod
+    def get_all_clubs():
+        return list(current_app.mongo.db.clubs.find({'is_active': True}))
+
+class ClubPostModel:
+    @staticmethod
+    def create_post(club_id, user_id, content):
+        post = {
+            'club_id': ObjectId(club_id),
+            'user_id': user_id,
+            'content': content,
+            'created_at': datetime.utcnow(),
+            'comments': [],
+            'likes': []
+        }
+        return current_app.mongo.db.club_posts.insert_one(post)
+
+    @staticmethod
+    def get_posts(club_id):
+        return list(current_app.mongo.db.club_posts.find({'club_id': ObjectId(club_id)}).sort('created_at', -1))
+
+class ClubChatMessageModel:
+    @staticmethod
+    def send_message(club_id, user_id, message):
+        msg = {
+            'club_id': ObjectId(club_id),
+            'user_id': user_id,
+            'message': message,
+            'timestamp': datetime.utcnow()
+        }
+        return current_app.mongo.db.club_chat_messages.insert_one(msg)
+
+    @staticmethod
+    def get_messages(club_id, limit=50):
+        return list(current_app.mongo.db.club_chat_messages.find({'club_id': ObjectId(club_id)}).sort('timestamp', -1).limit(limit))
+
+class FlashcardModel:
+    @staticmethod
+    def create_flashcard(user_id, front, back, tags=None):
+        card = {
+            'user_id': user_id,
+            'front': front,
+            'back': back,
+            'tags': tags or [],
+            'created_at': datetime.utcnow(),
+            'review_count': 0
+        }
+        return current_app.mongo.db.flashcards.insert_one(card)
+
+    @staticmethod
+    def get_user_flashcards(user_id):
+        return list(current_app.mongo.db.flashcards.find({'user_id': user_id}))
+
+class QuizQuestionModel:
+    @staticmethod
+    def create_question(question, options, answer, creator_id, tags=None):
+        q = {
+            'question': question,
+            'options': options,
+            'answer': answer,
+            'creator_id': creator_id,
+            'tags': tags or [],
+            'created_at': datetime.utcnow()
+        }
+        return current_app.mongo.db.quiz_questions.insert_one(q)
+
+    @staticmethod
+    def get_daily_questions(limit=5):
+        return list(current_app.mongo.db.quiz_questions.aggregate([{'$sample': {'size': limit}}]))
+
+class QuizAnswerModel:
+    @staticmethod
+    def submit_answer(user_id, question_id, answer, is_correct):
+        ans = {
+            'user_id': user_id,
+            'question_id': ObjectId(question_id),
+            'answer': answer,
+            'is_correct': is_correct,
+            'submitted_at': datetime.utcnow()
+        }
+        return current_app.mongo.db.quiz_answers.insert_one(ans)
+
+    @staticmethod
+    def get_user_answers(user_id):
+        return list(current_app.mongo.db.quiz_answers.find({'user_id': user_id}))
+
+class UserProgressModel:
+    @staticmethod
+    def update_progress(user_id, module, data):
+        return current_app.mongo.db.user_progress.update_one(
+            {'user_id': user_id, 'module': module},
+            {'$set': {'data': data, 'updated_at': datetime.utcnow()}},
+            upsert=True
+        )
+
+    @staticmethod
+    def get_progress(user_id, module):
+        return current_app.mongo.db.user_progress.find_one({'user_id': user_id, 'module': module})
 
 class UserModel:
     """User model with CRUD operations and utilities"""
@@ -570,7 +567,6 @@ class UserModel:
             logger.error(f"Error deleting user: {str(e)}")
             return False
 
-
 class BookModel:
     """Book model with CRUD operations"""
     
@@ -664,7 +660,6 @@ class BookModel:
             logger.error(f"Error updating book status: {str(e)}")
             return False
 
-
 class TaskModel:
     """Task model for productivity tracking"""
     
@@ -699,7 +694,6 @@ class TaskModel:
         except Exception as e:
             logger.error(f"Error creating completed task: {str(e)}")
             return None
-
 
 class ReadingSessionModel:
     """Reading session model"""
@@ -741,7 +735,6 @@ class ReadingSessionModel:
             logger.error(f"Error creating reading session: {str(e)}")
             return None
 
-
 class ActivityLogger:
     """Activity logging utility"""
     
@@ -763,7 +756,6 @@ class ActivityLogger:
             
         except Exception as e:
             logger.error(f"Error logging activity: {str(e)}")
-
 
 class AdminUtils:
     """Admin utilities for user and data management"""
@@ -917,7 +909,6 @@ class AdminUtils:
         except Exception as e:
             logger.error(f"Error getting system statistics: {str(e)}")
             return {}
-
 
 # Database validation schemas (for reference)
 USER_SCHEMA = {
@@ -1239,7 +1230,6 @@ class QuoteModel:
             logger.error(f"Error getting quote statistics: {str(e)}")
             return {}
 
-
 class TransactionModel:
     """Transaction model for tracking all financial transactions"""
     
@@ -1320,7 +1310,6 @@ class TransactionModel:
         except Exception as e:
             logger.error(f"Error getting user balance: {str(e)}")
             return 0
-
 
 class GoogleBooksAPI:
     """Google Books API integration for book verification"""
