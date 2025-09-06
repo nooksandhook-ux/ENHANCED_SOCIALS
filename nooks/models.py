@@ -64,14 +64,12 @@ class DatabaseManager:
         """Create database indexes for optimal performance"""
         try:
             # Users collection indexes
-            # Drop existing username index to handle duplicate null values
             try:
                 current_app.mongo.db.users.drop_index("username_1")
                 logger.info("Dropped existing username_1 index")
             except Exception as e:
                 logger.warning(f"No existing username_1 index to drop or error dropping: {str(e)}")
 
-            # Clean up documents with null or missing usernames
             null_username_docs = current_app.mongo.db.users.find({
                 '$or': [
                     {'username': None},
@@ -80,22 +78,21 @@ class DatabaseManager:
             })
             for doc in null_username_docs:
                 user_id = str(doc['_id'])
-                # Option 1: Delete documents with null usernames
                 current_app.mongo.db.users.delete_one({'_id': doc['_id']})
                 logger.info(f"Deleted user document with null username, ID: {user_id}")
 
-            # Recreate unique index on username
             current_app.mongo.db.users.create_index("username", unique=True)
             logger.info("Created unique index on users.username")
 
-            # Create other indexes
             current_app.mongo.db.users.create_index("email", unique=True)
             current_app.mongo.db.users.create_index("created_at")
+            current_app.mongo.db.users.create_index("is_admin")  # Added for admin queries
             
             # Books collection indexes
             current_app.mongo.db.books.create_index([("user_id", 1), ("status", 1)])
             current_app.mongo.db.books.create_index([("user_id", 1), ("added_at", -1)])
             current_app.mongo.db.books.create_index("isbn", sparse=True)
+            current_app.mongo.db.books.create_index("pdf_path", sparse=True)  # Added for encrypted PDF queries
             
             # Reading sessions indexes
             current_app.mongo.db.reading_sessions.create_index([("user_id", 1), ("date", -1)])
@@ -121,6 +118,7 @@ class DatabaseManager:
             # Activity log indexes
             current_app.mongo.db.activity_log.create_index([("user_id", 1), ("timestamp", -1)])
             current_app.mongo.db.activity_log.create_index("timestamp", expireAfterSeconds=2592000)  # 30 days
+            current_app.mongo.db.activity_log.create_index("action")  # Added for action-based queries
             
             # Quotes collection indexes
             current_app.mongo.db.quotes.create_index([("user_id", 1), ("status", 1)])
@@ -144,18 +142,16 @@ class DatabaseManager:
             
         except Exception as e:
             logger.error(f"Error creating indexes: {str(e)}")
-            raise  # Re-raise to ensure the error is caught by initialize_database
+            raise
     
     @staticmethod
     def _create_default_admin():
         """Create default admin user from environment variables"""
         try:
-            # Get admin credentials from environment
             admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
             admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
             admin_email = os.environ.get('ADMIN_EMAIL', 'admin@nookhook.com')
             
-            # Check if admin already exists
             existing_admin = current_app.mongo.db.users.find_one({
                 '$or': [
                     {'username': admin_username},
@@ -168,13 +164,13 @@ class DatabaseManager:
                 logger.info("Admin user already exists, skipping creation")
                 return
             
-            # Create admin user
             admin_data = {
                 'username': admin_username,
                 'email': admin_email,
                 'password_hash': generate_password_hash(admin_password),
                 'is_admin': True,
                 'is_active': True,
+                'accepted_terms': True,  # Admin auto-accepts terms
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
                 'total_points': 0,
@@ -206,7 +202,6 @@ class DatabaseManager:
             
             result = current_app.mongo.db.users.insert_one(admin_data)
             
-            # Log admin activity
             ActivityLogger.log_activity(
                 user_id=result.inserted_id,
                 action='admin_created',
@@ -223,7 +218,6 @@ class DatabaseManager:
     def _initialize_default_data():
         """Initialize default application data"""
         try:
-            # Create default themes if they don't exist
             default_themes = [
                 {
                     'name': 'Default',
@@ -410,7 +404,6 @@ class UserModel:
     def create_user(username, email, password, **kwargs):
         """Create a new user with validation"""
         try:
-            # Check for existing user
             existing_user = current_app.mongo.db.users.find_one({
                 '$or': [
                     {'username': username},
@@ -421,13 +414,13 @@ class UserModel:
             if existing_user:
                 return None, "Username or email already exists"
             
-            # Create user document
             user_data = {
                 'username': username,
                 'email': email,
                 'password_hash': generate_password_hash(password),
                 'is_admin': kwargs.get('is_admin', False),
                 'is_active': kwargs.get('is_active', True),
+                'accepted_terms': kwargs.get('accepted_terms', False),  # Track terms agreement
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
                 'last_login': None,
@@ -460,11 +453,11 @@ class UserModel:
             
             result = current_app.mongo.db.users.insert_one(user_data)
             
-            # Log user creation
             ActivityLogger.log_activity(
                 user_id=result.inserted_id,
                 action='user_registered',
-                description='New user account created'
+                description='New user account created',
+                metadata={'accepted_terms': user_data['accepted_terms']}
             )
             
             return result.inserted_id, None
@@ -486,13 +479,14 @@ class UserModel:
             })
             
             if user and check_password_hash(user['password_hash'], password):
-                # Update last login
+                if not user.get('accepted_terms', False):
+                    return None  # Deny login if terms not accepted
+                
                 current_app.mongo.db.users.update_one(
                     {'_id': user['_id']},
                     {'$set': {'last_login': datetime.utcnow()}}
                 )
                 
-                # Log login activity
                 ActivityLogger.log_activity(
                     user_id=user['_id'],
                     action='user_login',
@@ -531,7 +525,8 @@ class UserModel:
                 ActivityLogger.log_activity(
                     user_id=ObjectId(user_id),
                     action='user_updated',
-                    description='User profile updated'
+                    description='User profile updated',
+                    metadata={'updated_fields': list(update_data.keys())}
                 )
             
             return result.modified_count > 0
@@ -584,7 +579,7 @@ class BookModel:
                 'cover_url': kwargs.get('cover_url'),
                 'total_pages': kwargs.get('total_pages', 0),
                 'current_page': kwargs.get('current_page', 0),
-                'status': kwargs.get('status', 'to_read'),  # to_read, reading, finished
+                'status': kwargs.get('status', 'to_read'),
                 'rating': kwargs.get('rating'),
                 'review': kwargs.get('review', ''),
                 'quotes': kwargs.get('quotes', []),
@@ -593,17 +588,18 @@ class BookModel:
                 'added_at': datetime.utcnow(),
                 'started_at': kwargs.get('started_at'),
                 'finished_at': kwargs.get('finished_at'),
-                'updated_at': datetime.utcnow()
+                'updated_at': datetime.utcnow(),
+                'pdf_path': kwargs.get('pdf_path'),
+                'is_encrypted': kwargs.get('is_encrypted', False)  # Track encryption status
             }
             
             result = current_app.mongo.db.books.insert_one(book_data)
             
-            # Log book addition
             ActivityLogger.log_activity(
                 user_id=ObjectId(user_id),
                 action='book_added',
                 description=f'Added book: {title}',
-                metadata={'book_id': str(result.inserted_id)}
+                metadata={'book_id': str(result.inserted_id), 'has_pdf': bool(book_data['pdf_path']), 'is_encrypted': book_data['is_encrypted']}
             )
             
             return result.inserted_id
@@ -632,19 +628,18 @@ class BookModel:
             )
             
             if result.modified_count > 0:
-                # Award enhanced rewards for book completion
                 if status == 'finished':
                     from blueprints.rewards.services import RewardService
                     book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id)})
                     if book:
                         RewardService.award_points(
                             user_id=ObjectId(user_id),
-                            points=50,  # Base points for finishing a book
+                            points=50,
                             source='nook',
                             description=f'Finished reading "{book["title"]}"',
                             category='book_completion',
                             reference_id=ObjectId(book_id),
-                            goal_type='book_finished'  # This triggers the goal bonus
+                            goal_type='book_finished'
                         )
                 
                 ActivityLogger.log_activity(
@@ -672,7 +667,7 @@ class TaskModel:
                 'title': title,
                 'description': kwargs.get('description', ''),
                 'category': kwargs.get('category', 'general'),
-                'duration': duration,  # in minutes
+                'duration': duration,
                 'priority': kwargs.get('priority', 'medium'),
                 'tags': kwargs.get('tags', []),
                 'completed_at': kwargs.get('completed_at', datetime.utcnow()),
@@ -681,7 +676,6 @@ class TaskModel:
             
             result = current_app.mongo.db.completed_tasks.insert_one(task_data)
             
-            # Log task completion
             ActivityLogger.log_activity(
                 user_id=ObjectId(user_id),
                 action='task_completed',
@@ -706,7 +700,7 @@ class ReadingSessionModel:
                 'user_id': ObjectId(user_id),
                 'book_id': ObjectId(book_id) if book_id else None,
                 'pages_read': pages_read,
-                'duration': kwargs.get('duration', 0),  # in minutes
+                'duration': kwargs.get('duration', 0),
                 'notes': kwargs.get('notes', ''),
                 'date': kwargs.get('date', datetime.utcnow()),
                 'created_at': datetime.utcnow()
@@ -714,14 +708,12 @@ class ReadingSessionModel:
             
             result = current_app.mongo.db.reading_sessions.insert_one(session_data)
             
-            # Update book current page if book_id provided
             if book_id:
                 current_app.mongo.db.books.update_one(
                     {'_id': ObjectId(book_id)},
                     {'$inc': {'current_page': pages_read}}
                 )
             
-            # Log reading session
             ActivityLogger.log_activity(
                 user_id=ObjectId(user_id),
                 action='reading_session',
@@ -748,8 +740,8 @@ class ActivityLogger:
                 'description': description,
                 'metadata': metadata or {},
                 'timestamp': datetime.utcnow(),
-                'ip_address': None,  # Can be added from request context
-                'user_agent': None   # Can be added from request context
+                'ip_address': None,
+                'user_agent': None
             }
             
             current_app.mongo.db.activity_log.insert_one(activity_data)
@@ -822,7 +814,6 @@ class AdminUtils:
             user_id = ObjectId(user_id)
             
             if reset_type in ['all', 'rewards']:
-                # Reset rewards and points
                 current_app.mongo.db.rewards.delete_many({'user_id': user_id})
                 current_app.mongo.db.user_badges.delete_many({'user_id': user_id})
                 current_app.mongo.db.users.update_one(
@@ -831,19 +822,15 @@ class AdminUtils:
                 )
             
             if reset_type in ['all', 'books']:
-                # Reset books and reading sessions
                 current_app.mongo.db.books.delete_many({'user_id': user_id})
                 current_app.mongo.db.reading_sessions.delete_many({'user_id': user_id})
             
             if reset_type in ['all', 'tasks']:
-                # Reset tasks
                 current_app.mongo.db.completed_tasks.delete_many({'user_id': user_id})
             
             if reset_type in ['all', 'goals']:
-                # Reset goals
                 current_app.mongo.db.user_goals.delete_many({'user_id': user_id})
             
-            # Reset user statistics
             current_app.mongo.db.users.update_one(
                 {'_id': user_id},
                 {
@@ -882,12 +869,15 @@ class AdminUtils:
                 'users': {
                     'total': current_app.mongo.db.users.count_documents({}),
                     'active': current_app.mongo.db.users.count_documents({'is_active': True}),
-                    'admins': current_app.mongo.db.users.count_documents({'is_admin': True})
+                    'admins': current_app.mongo.db.users.count_documents({'is_admin': True}),
+                    'terms_accepted': current_app.mongo.db.users.count_documents({'accepted_terms': True})
                 },
                 'books': {
                     'total': current_app.mongo.db.books.count_documents({}),
                     'finished': current_app.mongo.db.books.count_documents({'status': 'finished'}),
-                    'reading': current_app.mongo.db.books.count_documents({'status': 'reading'})
+                    'reading': current_app.mongo.db.books.count_documents({'status': 'reading'}),
+                    'with_pdf': current_app.mongo.db.books.count_documents({'pdf_path': {'$ne': None}}),
+                    'encrypted': current_app.mongo.db.books.count_documents({'is_encrypted': True})
                 },
                 'tasks': {
                     'total': current_app.mongo.db.completed_tasks.count_documents({}),
@@ -910,13 +900,14 @@ class AdminUtils:
             logger.error(f"Error getting system statistics: {str(e)}")
             return {}
 
-# Database validation schemas (for reference)
+# Database validation schemas
 USER_SCHEMA = {
     'username': {'type': 'string', 'required': True, 'unique': True},
     'email': {'type': 'string', 'required': True, 'unique': True},
     'password_hash': {'type': 'string', 'required': True},
     'is_admin': {'type': 'boolean', 'default': False},
     'is_active': {'type': 'boolean', 'default': True},
+    'accepted_terms': {'type': 'boolean', 'default': False},  # Added for terms agreement
     'created_at': {'type': 'datetime', 'required': True},
     'updated_at': {'type': 'datetime', 'required': True},
     'last_login': {'type': 'datetime'},
@@ -933,7 +924,9 @@ BOOK_SCHEMA = {
     'status': {'type': 'string', 'allowed': ['to_read', 'reading', 'finished']},
     'total_pages': {'type': 'integer'},
     'current_page': {'type': 'integer'},
-    'added_at': {'type': 'datetime', 'required': True}
+    'added_at': {'type': 'datetime', 'required': True},
+    'pdf_path': {'type': 'string'},  # Path to encrypted PDF
+    'is_encrypted': {'type': 'boolean', 'default': False}  # Track encryption status
 }
 
 TASK_SCHEMA = {
@@ -984,7 +977,6 @@ class QuoteModel:
     def submit_quote(user_id, book_id, quote_text, page_number):
         """Submit a new quote for verification"""
         try:
-            # Validate book exists and belongs to user
             book = current_app.mongo.db.books.find_one({
                 '_id': ObjectId(book_id),
                 'user_id': ObjectId(user_id)
@@ -993,11 +985,9 @@ class QuoteModel:
             if not book:
                 return None, "Book not found or doesn't belong to user"
             
-            # Check if page number is within book range
             if book.get('total_pages', 0) > 0 and page_number > book['total_pages']:
                 return None, f"Page number {page_number} exceeds book's total pages ({book['total_pages']})"
             
-            # Check for duplicate quotes (same text from same book)
             existing_quote = current_app.mongo.db.quotes.find_one({
                 'user_id': ObjectId(user_id),
                 'book_id': ObjectId(book_id),
@@ -1008,7 +998,6 @@ class QuoteModel:
             if existing_quote:
                 return None, "This quote has already been submitted"
             
-            # Create quote document
             quote_data = {
                 'user_id': ObjectId(user_id),
                 'book_id': ObjectId(book_id),
@@ -1019,12 +1008,11 @@ class QuoteModel:
                 'verified_at': None,
                 'verified_by': None,
                 'rejection_reason': None,
-                'reward_amount': 10  # N10 per quote
+                'reward_amount': 10
             }
             
             result = current_app.mongo.db.quotes.insert_one(quote_data)
             
-            # Log quote submission
             ActivityLogger.log_activity(
                 user_id=ObjectId(user_id),
                 action='quote_submitted',
@@ -1032,7 +1020,9 @@ class QuoteModel:
                 metadata={
                     'quote_id': str(result.inserted_id),
                     'book_title': book['title'],
-                    'page_number': page_number
+                    'book_id': str(book_id),
+                    'page_number': page_number,
+                    'quote_text': quote_text.strip()
                 }
             )
             
@@ -1064,7 +1054,7 @@ class QuoteModel:
                 }},
                 {'$unwind': '$user'},
                 {'$unwind': '$book'},
-                {'$sort': {'submitted_at': 1}},  # Oldest first for fair processing
+                {'$sort': {'submitted_at': 1}},
                 {'$skip': skip},
                 {'$limit': per_page}
             ]
@@ -1097,7 +1087,6 @@ class QuoteModel:
             if approved:
                 update_data['status'] = 'verified'
                 
-                # Award points using the enhanced reward system
                 from blueprints.rewards.services import RewardService
                 
                 RewardService.award_points(
@@ -1107,10 +1096,9 @@ class QuoteModel:
                     description=f'Quote verified from page {quote["page_number"]}',
                     category='quote_verified',
                     reference_id=ObjectId(quote_id),
-                    goal_type='quote_reflection'  # This triggers the goal bonus
+                    goal_type='quote_reflection'
                 )
                 
-                # Create transaction record for monetary tracking
                 TransactionModel.create_transaction(
                     user_id=quote['user_id'],
                     amount=quote['reward_amount'],
@@ -1119,7 +1107,6 @@ class QuoteModel:
                     description=f"Quote verification reward - Page {quote['page_number']}"
                 )
                 
-                # Log verification
                 ActivityLogger.log_activity(
                     user_id=quote['user_id'],
                     action='quote_verified',
@@ -1127,7 +1114,9 @@ class QuoteModel:
                     metadata={
                         'quote_id': str(quote_id),
                         'reward_amount': quote['reward_amount'],
-                        'verified_by': str(admin_id)
+                        'verified_by': str(admin_id),
+                        'book_id': str(quote['book_id']),
+                        'page_number': quote['page_number']
                     }
                 )
                 
@@ -1135,7 +1124,6 @@ class QuoteModel:
                 update_data['status'] = 'rejected'
                 update_data['rejection_reason'] = rejection_reason or "Quote could not be verified"
                 
-                # Log rejection
                 ActivityLogger.log_activity(
                     user_id=quote['user_id'],
                     action='quote_rejected',
@@ -1143,7 +1131,9 @@ class QuoteModel:
                     metadata={
                         'quote_id': str(quote_id),
                         'rejection_reason': rejection_reason,
-                        'verified_by': str(admin_id)
+                        'verified_by': str(admin_id),
+                        'book_id': str(quote['book_id']),
+                        'page_number': quote['page_number']
                     }
                 )
             
@@ -1249,7 +1239,6 @@ class TransactionModel:
             
             result = current_app.mongo.db.transactions.insert_one(transaction_data)
             
-            # Log transaction
             ActivityLogger.log_activity(
                 user_id=ObjectId(user_id),
                 action='transaction_created',
@@ -1257,7 +1246,8 @@ class TransactionModel:
                 metadata={
                     'transaction_id': str(result.inserted_id),
                     'amount': amount,
-                    'reward_type': reward_type
+                    'reward_type': reward_type,
+                    'quote_id': str(quote_id) if quote_id else None
                 }
             )
             
@@ -1346,13 +1336,11 @@ class GoogleBooksAPI:
                     'cover_url': None
                 }
                 
-                # Extract ISBN
                 for identifier in volume_info.get('industryIdentifiers', []):
                     if identifier.get('type') in ['ISBN_13', 'ISBN_10']:
                         book['isbn'] = identifier.get('identifier')
                         break
                 
-                # Extract cover image
                 image_links = volume_info.get('imageLinks', {})
                 book['cover_url'] = image_links.get('thumbnail') or image_links.get('smallThumbnail')
                 
@@ -1389,13 +1377,11 @@ class GoogleBooksAPI:
                 'cover_url': None
             }
             
-            # Extract ISBN
             for identifier in volume_info.get('industryIdentifiers', []):
                 if identifier.get('type') in ['ISBN_13', 'ISBN_10']:
                     book['isbn'] = identifier.get('identifier')
                     break
             
-            # Extract cover image
             image_links = volume_info.get('imageLinks', {})
             book['cover_url'] = image_links.get('thumbnail') or image_links.get('smallThumbnail')
             
