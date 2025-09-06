@@ -25,9 +25,15 @@ class RegisterForm(FlaskForm):
     submit = SubmitField('Sign Up')
 
 # Flask-WTF Form for Settings
-class SettingsForm(Flacherry:
+class SettingsForm(FlaskForm):
     notifications = BooleanField('Enable Notifications')
-    theme = SelectField('Theme', choices=[('light', 'Light'), ('dark', 'Dark')])
+    theme = SelectField('Theme', choices=[
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+        ('retro', 'Retro'),
+        ('neon', 'Neon'),
+        ('anime', 'Anime')
+    ])
     timer_sound = BooleanField('Enable Timer Sound')
     default_timer_duration = IntegerField('Default Timer Duration (minutes)', validators=[DataRequired()])
     submit = SubmitField('Save Settings')
@@ -139,6 +145,12 @@ def settings():
         flash('Settings updated successfully!', 'success')
         return redirect(url_for('auth.settings'))
     
+    # Flash validation errors if form submission fails
+    if request.method == 'POST':
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{field}: {error}", 'error')
+    
     # Pre-populate form with existing user preferences
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     if user and 'preferences' in user:
@@ -147,7 +159,7 @@ def settings():
         form.timer_sound.data = user['preferences'].get('timer_sound', False)
         form.default_timer_duration.data = user['preferences'].get('default_timer_duration', 25)
     
-    return render_template('auth/settings.html', user=user, form=form)
+    return render_template('auth/settings.html', user=user, form=form, change_password_form=ChangePasswordForm())
 
 @auth_bp.route('/change_password', methods=['POST'])
 @login_required
