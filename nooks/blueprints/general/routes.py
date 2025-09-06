@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, session, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for
+from flask_login import current_user
+from utils.decorators import login_required
 import logging
 
 # Configure logging
@@ -10,16 +12,17 @@ general_bp = Blueprint('general', __name__, template_folder='templates')
 @general_bp.route('/')
 def index():
     """Handle the root URL and redirect first-time visitors to the landing page"""
-    if 'user_id' in session:
-        logger.info(f"Authenticated user {session['user_id']} accessing root, redirecting to home")
+    if current_user.is_authenticated:
+        logger.info(f"Authenticated user {current_user.id} accessing root, redirecting to home")
         return redirect(url_for('general.home'))
     logger.info("Unauthenticated user accessing root, redirecting to landing")
     return redirect(url_for('general.landing'))
 
 @general_bp.route('/home')
+@login_required
 def home():
     """Home page for authenticated users"""
-    logger.info(f"Rendering home page for user_id: {session.get('user_id', 'unknown')}")
+    logger.info(f"Rendering home page for user_id: {current_user.id}")
     return render_template('home.html')
 
 @general_bp.route('/landing')
