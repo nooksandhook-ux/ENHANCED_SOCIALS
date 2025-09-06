@@ -33,3 +33,8 @@ def privacy():
 def terms():
     """Terms of service page"""
     return render_template('general/terms.html')
+
+@general_bp.route('/fair-use')
+def fair_use():
+    """Fair use policy page"""
+    return render_template('general/fair_use.html')
