@@ -225,3 +225,17 @@ body {
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     transform: translateY(-5px);
 }
+
+.card-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 300px;
+}
