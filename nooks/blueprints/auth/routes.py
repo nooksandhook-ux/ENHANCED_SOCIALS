@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from bson import ObjectId
 from datetime import datetime
 from utils.decorators import login_required
-from models import UserModel  # Assuming UserModel is in a 'models' module
+from models import UserModel
 import logging
 
 # Configure logging
@@ -27,6 +27,7 @@ class RegisterForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    accept_terms = BooleanField('I accept the <a href="/general/terms" target="_blank">Terms of Service</a>', validators=[DataRequired()])
     submit = SubmitField('Sign Up')
 
 # Flask-WTF Form for Settings
@@ -81,15 +82,9 @@ def login():
                 if not user_exists:
                     logger.warning(f"Login failed for email: {email} - User not found")
                     flash('Email or username not registered', 'error')
-                elif not check_password_hash(user_exists['password_hash'], password):
+                else:
                     logger.warning(f"Login failed for email: {email} - Incorrect password")
                     flash('Incorrect password', 'error')
-                elif not user_exists.get('accepted_terms', False):
-                    logger.warning(f"Login failed for email: {email} - Terms not accepted")
-                    flash('You must accept the terms of service to log in', 'error')
-                else:
-                    logger.warning(f"Login failed for email: {email} - Unknown reason")
-                    flash('Authentication failed for unknown reason', 'error')
         else:
             logger.warning(f"Login form validation failed: {form.errors}")
             for field, errors in form.errors.items():
@@ -105,9 +100,15 @@ def register():
         username = form.username.data
         email = form.email.data
         password = form.password.data
+        accept_terms = form.accept_terms.data
 
-        logger.info(f"Registration attempt for email: {email}")
-        user_id, error = UserModel.create_user(username, email, password)
+        logger.info(f"Registration attempt for email: {email}, terms accepted: {accept_terms}")
+        if not accept_terms:
+            logger.warning(f"Registration failed for email: {email} - Terms not accepted")
+            flash('You must accept the Terms of Service to register', 'error')
+            return render_template('auth/register.html', form=form)
+
+        user_id, error = UserModel.create_user(username, email, password, accepted_terms=accept_terms)
         if error:
             logger.warning(f"Registration failed for email: {email} - {error}")
             flash(error, 'error')
