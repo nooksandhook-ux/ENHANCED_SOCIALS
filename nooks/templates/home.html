@@ -86,7 +86,7 @@
                     Join or create book clubs, discuss, and read together with the community.
                 </p>
                 <div class="card-buttons d-grid gap-2">
-                    <a href="{{ url_for('nooks_club.index') }}" class="btn btn-primary btn-lg">
+                    <a href="{{ url_for('nooks_club_bp.index') }}" class="btn btn-primary btn-lg">
                         <i class="bi bi-people-fill me-2"></i>Join Readers
                     </a>
                 </div>
@@ -127,13 +127,14 @@
         </div>
     </div>
 </div>
+
 <!-- Recent Activity -->
 <div class="row mt-4">
     <div class="col-12">
         <h3 class="mb-3">Quick Actions</h3>
         <div class="row g-3">
             <div class="col-md-4">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary quick-actions w-100">
+                <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary quick-actions w-100">
                     <i class="bi bi-graph-up me-2"></i>View Dashboard
                 </a>
             </div>
@@ -155,5 +156,3 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 {% endblock %}
-
-
