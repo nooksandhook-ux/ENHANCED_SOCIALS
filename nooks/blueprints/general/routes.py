@@ -5,9 +5,14 @@ general_bp = Blueprint('general', __name__, template_folder='templates')
 @general_bp.route('/')
 def index():
     """Handle the root URL and redirect first-time visitors to the landing page"""
-    if 'user_id' not in session:  # First-time or non-logged-in user
+    if 'user_id' not in session:  
         return redirect(url_for('general.landing'))
-    return redirect(url_for('index'))  # Redirect logged-in users to the main app (e.g., dashboard)
+    return redirect(url_for('index'))  
+
+@general_bp.route('/home')
+def home():
+    """Home page"""
+    return render_template('general/home.html')
 
 @general_bp.route('/landing')
 def landing():
