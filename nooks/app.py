@@ -1,5 +1,6 @@
 from flask import Flask, render_template, redirect, url_for, session, request, jsonify, flash
 from flask_pymongo import PyMongo
+from flask_login import LoginManager  # Add Flask-Login import
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import os
@@ -10,7 +11,6 @@ import json
 
 # Import models and database utilities
 from models import DatabaseManager, UserModel, AdminUtils
-
 
 # Import blueprints
 from blueprints.auth.routes import auth_bp
@@ -36,6 +36,24 @@ def create_app():
     # Initialize MongoDB
     mongo = PyMongo(app)
     app.mongo = mongo
+    
+    # Initialize Flask-Login
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'  # Redirect to auth.login for unauthorized users
+    
+    # User loader callback for Flask-Login
+    @login_manager.user_loader
+    def load_user(user_id):
+        try:
+            # Convert string user_id to ObjectId for MongoDB
+            user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+            if user_data:
+                return UserModel(user_data)  # Assuming UserModel takes user_data dict
+            return None
+        except Exception as e:
+            print(f"Error loading user: {e}")
+            return None
     
     # Initialize database with application context
     with app.app_context():
