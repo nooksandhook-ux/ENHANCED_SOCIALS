@@ -55,6 +55,29 @@ def add_book():
             if not user_id:
                 flash("User session missing.", "danger")
                 return redirect(request.url)
+
+            # Form fields: use .get() and provide defaults
+            google_books_id = request.form.get('google_books_id')
+            title = request.form.get('title', '')
+            authors = [a.strip() for a in request.form.get('authors', '').split(',')]
+            description = request.form.get('description', '')
+            cover_image = request.form.get('cover_image', '')
+            page_count = int(request.form.get('page_count', 0))
+            status = request.form.get('status', 'to_read')
+            genre = request.form.get('genre', '')
+            isbn = request.form.get('isbn', '')
+            published_date = request.form.get('published_date', '')
+
+            # Check for duplicate book (same user, title, and authors)
+            existing_book = current_app.mongo.db.books.find_one({
+                'user_id': user_id,
+                'title': title.strip(),
+                'authors': authors
+            })
+            if existing_book:
+                flash("You already added this book.", "warning")
+                return redirect(request.url)
+
             # Enforce upload limit: max 10 books with PDF per user per month
             month_ago = datetime.utcnow() - timedelta(days=30)
             upload_count = current_app.mongo.db.books.count_documents({
@@ -87,18 +110,6 @@ def add_book():
                 pdf_path_full = os.path.join(upload_dir, pdf_filename)
                 pdf_file.save(pdf_path_full)
                 pdf_path = f"uploads/{user_id}/{pdf_filename}"
-
-            # Form fields: use .get() and provide defaults
-            google_books_id = request.form.get('google_books_id')
-            title = request.form.get('title', '')
-            authors = [a.strip() for a in request.form.get('authors', '').split(',')]
-            description = request.form.get('description', '')
-            cover_image = request.form.get('cover_image', '')
-            page_count = int(request.form.get('page_count', 0))
-            status = request.form.get('status', 'to_read')
-            genre = request.form.get('genre', '')
-            isbn = request.form.get('isbn', '')
-            published_date = request.form.get('published_date', '')
 
             if google_books_id:
                 book_data = {
