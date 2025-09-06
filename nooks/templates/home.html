@@ -25,7 +25,7 @@
                 <p class="card-text text-muted mb-4">
                     Track your reading journey, discover new books, and build lasting reading habits.
                 </p>
-                <div class="d-grid gap-2">
+                <div class="card-buttons d-grid gap-2">
                     <a href="{{ url_for('nook.index') }}" class="btn btn-success btn-lg">
                         <i class="bi bi-book-half me-2"></i>Start Reading
                     </a>
@@ -55,7 +55,7 @@
                 <p class="card-text text-muted mb-4">
                     Boost productivity with focused work sessions and the Pomodoro technique.
                 </p>
-                <div class="d-grid gap-2">
+                <div class="card-buttons d-grid gap-2">
                     <a href="{{ url_for('hook.timer') }}" class="btn btn-info btn-lg">
                         <i class="bi bi-play-circle me-2"></i>Start Timer
                     </a>
@@ -85,7 +85,7 @@
                 <p class="card-text text-muted mb-4">
                     Join or create book clubs, discuss, and read together with the community.
                 </p>
-                <div class="d-grid gap-2">
+                <div class="card-buttons d-grid gap-2">
                     <a href="{{ url_for('nooks_club.index') }}" class="btn btn-primary btn-lg">
                         <i class="bi bi-people-fill me-2"></i>Join Other Readers
                     </a>
@@ -112,7 +112,7 @@
                 <p class="card-text text-muted mb-4">
                     Flashcards, quizzes, and more to boost your learning and retention.
                 </p>
-                <div class="d-grid gap-2">
+                <div class="card-buttons d-grid gap-2">
                     <a href="{{ url_for('mini_modules.index') }}" class="btn btn-warning btn-lg text-white">
                         <i class="bi bi-lightning-charge me-2"></i>Test Your Retention
                     </a>
@@ -182,5 +182,5 @@
 {% endblock %}
 
 {% block extra_head %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 {% endblock %}
