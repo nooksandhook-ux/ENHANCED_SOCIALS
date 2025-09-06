@@ -196,17 +196,32 @@ body {
     display: block;
 }
 
-.quick-actions.btn {
-  background: white;
-  border: 1px solid #ccc;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-radius: 10px;
-  padding: 15px;
-  color: #333!important;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+.nook-card:hover {
+    transform: translateY(-5px);
+    transition: transform 0.3s ease;
 }
+
+.hook-card:hover {
+    transform: translateY(-5px);
+    transition: transform 0.3s ease;
+}
+
+.display-1 {
+    font-size: 4rem;
+}
+
+.quick-actions.btn {
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    padding: 15px;
+    color: #333 !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
 .quick-actions.btn:hover {
-  background: #f8f9fa;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-  transform: translateY(-5px);
+    background: #f8f9fa;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    transform: translateY(-5px);
 }
