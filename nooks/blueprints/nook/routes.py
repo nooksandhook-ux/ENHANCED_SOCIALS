@@ -7,6 +7,11 @@ from werkzeug.utils import secure_filename
 from utils.decorators import login_required
 from utils.google_books import search_books, get_book_details
 from blueprints.rewards.services import RewardService
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 nook_bp = Blueprint('nook', __name__, template_folder='templates')
 
@@ -166,8 +171,7 @@ def add_book():
             flash('Book added successfully!', 'success')
             return redirect(url_for('nook.index'))
         except Exception as e:
-            import traceback
-            print(traceback.format_exc())
+            logger.error(f"Error adding book: {str(e)}", exc_info=True)
             flash(f"An error occurred: {str(e)}", "danger")
             return redirect(request.url)
 
@@ -224,8 +228,52 @@ def edit_book(book_id):
             return redirect(url_for('nook.my_uploads'))
         return render_template('nook/edit_book.html', book=book)
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error editing book {book_id}: {str(e)}", exc_info=True)
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('nook.my_uploads'))
+
+@nook_bp.route('/delete_book/<book_id>', methods=['POST'])
+@login_required
+def delete_book(book_id):
+    try:
+        user_id = ObjectId(session.get('user_id'))
+        if not user_id:
+            flash("User session missing.", "danger")
+            return redirect(url_for('nook.my_uploads'))
+        
+        book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
+        if not book:
+            flash('Book not found.', 'danger')
+            return redirect(url_for('nook.my_uploads'))
+
+        # Delete associated PDF file if it exists
+        if book.get('pdf_path'):
+            pdf_path_full = os.path.join(current_app.root_path, 'static', book['pdf_path'])
+            if os.path.exists(pdf_path_full):
+                try:
+                    os.remove(pdf_path_full)
+                    logger.info(f"Deleted PDF file: {pdf_path_full}")
+                except OSError as e:
+                    logger.error(f"Error deleting PDF file {pdf_path_full}: {str(e)}")
+
+        # Delete the book from the database
+        current_app.mongo.db.books.delete_one({'_id': ObjectId(book_id), 'user_id': user_id})
+        logger.info(f"Book {book_id} deleted by user {user_id}")
+
+        # Optionally, handle reward points (e.g., deduct points or log deletion)
+        RewardService.award_points(
+            user_id=user_id,
+            points=-5,  # Negative points for deletion, adjust as needed
+            source='nook',
+            description=f'Deleted book: {book["title"]}',
+            category='book_management',
+            reference_id=str(book_id)
+        )
+
+        flash('Book deleted successfully!', 'success')
+        return redirect(url_for('nook.my_uploads'))
+    except Exception as e:
+        logger.error(f"Error deleting book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.my_uploads'))
 
@@ -240,8 +288,7 @@ def my_uploads():
         books = list(current_app.mongo.db.books.find({'user_id': user_id, 'pdf_path': {'$ne': None}}).sort('added_at', -1))
         return render_template('nook/my_uploads.html', books=books)
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error loading my_uploads: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.index'))
 
@@ -279,8 +326,7 @@ def book_detail(book_id):
         
         return render_template('nook/book_detail.html', book=book, reading_sessions=reading_sessions)
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error loading book detail {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.index'))
 
@@ -369,8 +415,7 @@ def update_progress(book_id):
         
         return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error updating progress for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.book_detail', book_id=book_id))
 
@@ -410,8 +455,7 @@ def add_takeaway(book_id):
         flash('Key takeaway added!', 'success')
         return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error adding takeaway for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.book_detail', book_id=book_id))
 
@@ -453,8 +497,7 @@ def add_quote(book_id):
         flash('Quote added!', 'success')
         return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error adding quote for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.book_detail', book_id=book_id))
 
@@ -491,8 +534,7 @@ def rate_book(book_id):
         flash('Book rated successfully!', 'success')
         return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error rating book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.book_detail', book_id=book_id))
 
@@ -538,8 +580,7 @@ def library():
                              current_genre=genre_filter,
                              current_sort=sort_by)
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error loading library: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.index'))
 
@@ -585,8 +626,7 @@ def analytics():
         
         return render_template('nook/analytics.html', analytics=analytics_data)
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error loading analytics: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.index'))
 
@@ -615,6 +655,5 @@ def calculate_reading_streak(user_id):
         
         return streak
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error calculating reading streak for user {user_id}: {str(e)}", exc_info=True)
         return 0
