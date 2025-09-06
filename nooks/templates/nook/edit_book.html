@@ -4,6 +4,7 @@
 <div class="container mt-4">
     <h1 class="mb-4 text-warning"><i class="bi bi-pencil-square me-2"></i>Edit Book</h1>
     <form method="POST" enctype="multipart/form-data">
+        {{ form.csrf_token }} <!-- Added CSRF token -->
         <div class="mb-3">
             <label for="title" class="form-label">Title *</label>
             <input type="text" class="form-control" id="title" name="title" value="{{ book.title }}" required>
@@ -31,9 +32,19 @@
         <div class="mb-3">
             <label for="pdf_file" class="form-label">Replace PDF (optional, max 10MB)</label>
             <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept="application/pdf">
+            <input type="hidden" id="is_encrypted" name="is_encrypted" value="true"> <!-- Indicate encryption -->
             {% if book.pdf_path %}
-            <div class="form-text">Current PDF: <a href="/static/{{ book.pdf_path }}" target="_blank">View</a></div>
+            <div class="form-text">
+                Current PDF: {{ 'Encrypted' if book.is_encrypted else 'Unencrypted' }} | 
+                <a href="{{ url_for('nook.read_book', book_id=book._id) }}">Read</a>
+            </div>
             {% endif %}
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="terms_agreement" name="terms_agreement" required>
+            <label class="form-check-label" for="terms_agreement">
+                I confirm I have the legal right to upload this PDF and agree to the <a href="{{ url_for('general.terms') }}" target="_blank">Terms of Service</a>.
+            </label>
         </div>
         <button type="submit" class="btn btn-warning"><i class="bi bi-save me-2"></i>Save Changes</button>
         <a href="{{ url_for('nook.my_uploads') }}" class="btn btn-secondary ms-2">Cancel</a>
