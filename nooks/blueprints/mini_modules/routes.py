@@ -1,4 +1,4 @@
-# Quiz Leaderboard, Review, Analytics Pages
+from . import mini_modules_bp
 from flask_login import login_required
 
 @mini_modules_bp.route('/quiz_leaderboard')
@@ -40,3 +40,4 @@ def quiz():
         # Handle quiz submission
         flash('Quiz submitted!')
     return render_template('mini_modules/quiz.html')
+
