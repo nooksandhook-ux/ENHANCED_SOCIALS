@@ -86,7 +86,7 @@
                     Join or create book clubs, discuss, and read together with the community.
                 </p>
                 <div class="card-buttons d-grid gap-2">
-                    <a href="{{ url_for('nooks_club_bp.index') }}" class="btn btn-primary btn-lg">
+                    <a href="{{ url_for('nooks_club.index') }}" class="btn btn-primary btn-lg">
                         <i class="bi bi-people-fill me-2"></i>Join Readers
                     </a>
                 </div>
@@ -156,3 +156,4 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 {% endblock %}
+
