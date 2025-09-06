@@ -70,7 +70,7 @@ def login():
                 session.permanent = True  # Ensure session persists
                 logger.info(f"Login successful for user_id: {session['user_id']}")
                 flash('Login successful!', 'success')
-                return redirect(url_for('index'))
+                return redirect(url_for('general.home'))
             else:
                 # Check why authentication failed
                 user_exists = current_app.mongo.db.users.find_one({
