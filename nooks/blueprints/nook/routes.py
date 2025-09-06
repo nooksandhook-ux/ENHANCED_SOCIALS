@@ -277,6 +277,27 @@ def delete_book(book_id):
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.my_uploads'))
 
+@nook_bp.route('/read/<book_id>')
+@login_required
+def read_book(book_id):
+    try:
+        user_id = ObjectId(session.get('user_id'))
+        if not user_id:
+            flash("User session missing.", "danger")
+            return redirect(url_for('nook.book_detail', book_id=book_id))
+        book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
+        if not book or not book.get('pdf_path'):
+            flash('PDF not available for this book.', 'danger')
+            return redirect(url_for('nook.book_detail', book_id=book_id))
+        
+        pdf_url = url_for('static', filename=book['pdf_path'])
+        logger.info(f"Serving PDF for book {book_id} at {pdf_url}")
+        return render_template('nook/read_book.html', pdf_url=pdf_url, book=book)
+    except Exception as e:
+        logger.error(f"Error serving PDF for book {book_id}: {str(e)}", exc_info=True)
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('nook.book_detail', book_id=book_id))
+
 @nook_bp.route('/my_uploads')
 @login_required
 def my_uploads():
