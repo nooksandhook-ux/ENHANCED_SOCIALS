@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Nooks {% endblock %}
+{% block title %}Home - Nooks{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -162,17 +162,17 @@
         <h3 class="mb-3">Quick Actions</h3>
         <div class="row g-3">
             <div class="col-md-4">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary w-100">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary quick-actions w-100">
                     <i class="bi bi-graph-up me-2"></i>View Dashboard
                 </a>
             </div>
             <div class="col-md-4">
-                <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success w-100">
+                <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success quick-actions w-100">
                     <i class="bi bi-plus-circle me-2"></i>Add New Book
                 </a>
             </div>
             <div class="col-md-4">
-                <a href="{{ url_for('hook.timer') }}" class="btn btn-outline-info w-100">
+                <a href="{{ url_for('hook.timer') }}" class="btn btn-outline-info quick-actions w-100">
                     <i class="bi bi-play-circle me-2"></i>Start Focus Session
                 </a>
             </div>
@@ -182,20 +182,3 @@
 {% endblock %}
 
 {% block extra_head %}
-<style>
-.nook-card:hover {
-    transform: translateY(-5px);
-    transition: transform 0.3s ease;
-}
-
-.hook-card:hover {
-    transform: translateY(-5px);
-    transition: transform 0.3s ease;
-}
-
-.display-1 {
-    font-size: 4rem;
-}
-</style>
-{% endblock %}
-
