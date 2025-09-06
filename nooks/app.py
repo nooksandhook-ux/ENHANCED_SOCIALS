@@ -9,7 +9,8 @@ from functools import wraps
 import requests
 from bson import ObjectId
 import json
-import logging  # Add logging import
+import logging
+from flask_login import current_user
 
 # Import models and database utilities
 from models import DatabaseManager, UserModel, AdminUtils
@@ -177,3 +178,4 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
