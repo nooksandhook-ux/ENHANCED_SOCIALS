@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, session, request, jsonify, flash
 from flask_pymongo import PyMongo
-from flask_login import LoginManager
-from flask_wtf.csrf import CSRFProtect  # Add CSRFProtect import
+from flask_login import LoginManager, current_user
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import os
@@ -10,10 +10,9 @@ import requests
 from bson import ObjectId
 import json
 import logging
-from flask_login import current_user
 
 # Import models and database utilities
-from models import DatabaseManager, UserModel, AdminUtils
+from models import DatabaseManager, User
 
 # Import blueprints
 from blueprints.auth.routes import auth_bp
@@ -39,9 +38,9 @@ def create_app():
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['MONGO_URI'] = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/nook_hook_app')
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Allow cookies in cross-site requests
-    app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Sessions last 7 days
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = True  # Enable for HTTPS in production
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
     
     # Initialize MongoDB
     mongo = PyMongo(app)
@@ -59,11 +58,10 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         try:
-            # Convert string user_id to ObjectId for MongoDB
             user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
             if user_data:
                 logger.info(f"Loaded user {user_id} successfully")
-                return UserModel(user_data)
+                return User(user_data)
             logger.warning(f"User {user_id} not found in database")
             return None
         except Exception as e:
@@ -73,7 +71,8 @@ def create_app():
     # Log session and authentication details for debugging
     @app.before_request
     def log_session():
-        logger.info(f"Request: {request.path}, Session user_id: {session.get('user_id')}, Current user: {current_user.is_authenticated}")
+        user_id = current_user.get_id() if current_user.is_authenticated else 'anonymous'
+        logger.info(f"Request: {request.path}, Session user_id: {session.get('user_id')}, Current user: {current_user.is_authenticated}, User ID: {user_id}")
     
     # Debug route to inspect session and user data
     @app.route('/debug_session')
@@ -113,12 +112,13 @@ def create_app():
             logger.info("Unauthenticated user, redirecting to landing page")
             return redirect(url_for('general.landing'))
         logger.info(f"Authenticated user {current_user.get_id()} accessing home page")
-        return render_template('home.html')
+        return render_template('nooks/home.html')
     
     # Dashboard route
     @app.route('/dashboard')
     def dashboard():
-        logger.info(f"User {current_user.get_id() if current_user.is_authenticated else 'anonymous'} accessing dashboard")
+        user_id = current_user.get_id() if current_user.is_authenticated else 'anonymous'
+        logger.info(f"User {user_id} accessing dashboard")
         return redirect(url_for('dashboard.index'))
     
     return app
@@ -178,4 +178,3 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
