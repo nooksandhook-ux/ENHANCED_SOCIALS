@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app, send_file
 from flask_login import login_required
 from bson import ObjectId
 from datetime import datetime, timedelta
@@ -8,12 +8,18 @@ from utils.decorators import login_required
 from utils.google_books import search_books, get_book_details
 from blueprints.rewards.services import RewardService
 import logging
+from cryptography.fernet import Fernet
+from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 nook_bp = Blueprint('nook', __name__, template_folder='templates')
+
+# Initialize encryption
+ENCRYPTION_KEY = os.environ.get('UPLOAD_ENCRYPTION_KEY', Fernet.generate_key())
+fernet = Fernet(ENCRYPTION_KEY)
 
 @nook_bp.route('/')
 @login_required
@@ -59,6 +65,11 @@ def add_book():
             user_id = ObjectId(session.get('user_id'))
             if not user_id:
                 flash("User session missing.", "danger")
+                return redirect(request.url)
+
+            # Check user agreement
+            if not request.form.get('agree_terms'):
+                flash('You must agree to the terms before uploading.', 'danger')
                 return redirect(request.url)
 
             # Form fields: use .get() and provide defaults
@@ -113,8 +124,19 @@ def add_book():
                 os.makedirs(upload_dir, exist_ok=True)
                 pdf_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secure_filename(pdf_file.filename)}"
                 pdf_path_full = os.path.join(upload_dir, pdf_filename)
-                pdf_file.save(pdf_path_full)
+                # Encrypt PDF before saving
+                encrypted_pdf = fernet.encrypt(pdf_file.read())
+                with open(pdf_path_full, 'wb') as f:
+                    f.write(encrypted_pdf)
                 pdf_path = f"uploads/{user_id}/{pdf_filename}"
+
+                # Log upload
+                current_app.activity_logger.log_activity(
+                    user_id=user_id,
+                    action='pdf_upload',
+                    description=f'Uploaded PDF for book: {title}',
+                    metadata={'book_title': title, 'filename': pdf_filename}
+                )
 
             if google_books_id:
                 book_data = {
@@ -190,6 +212,11 @@ def edit_book(book_id):
             flash('Book not found.', 'danger')
             return redirect(url_for('nook.my_uploads'))
         if request.method == 'POST':
+            # Check user agreement for new uploads
+            if 'pdf_file' in request.files and request.files['pdf_file'].filename != '' and not request.form.get('agree_terms'):
+                flash('You must agree to the terms before uploading.', 'danger')
+                return redirect(request.url)
+            
             # Form fields: use .get() and provide defaults
             title = request.form.get('title', '')
             authors = [a.strip() for a in request.form.get('authors', '').split(',')]
@@ -221,8 +248,18 @@ def edit_book(book_id):
                 os.makedirs(upload_dir, exist_ok=True)
                 pdf_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secure_filename(pdf_file.filename)}"
                 pdf_path_full = os.path.join(upload_dir, pdf_filename)
-                pdf_file.save(pdf_path_full)
+                # Encrypt PDF before saving
+                encrypted_pdf = fernet.encrypt(pdf_file.read())
+                with open(pdf_path_full, 'wb') as f:
+                    f.write(encrypted_pdf)
                 update['pdf_path'] = f"uploads/{user_id}/{pdf_filename}"
+                # Log upload
+                current_app.activity_logger.log_activity(
+                    user_id=user_id,
+                    action='pdf_upload',
+                    description=f'Uploaded new PDF for book: {title}',
+                    metadata={'book_id': book_id, 'filename': pdf_filename}
+                )
             current_app.mongo.db.books.update_one({'_id': ObjectId(book_id)}, {'$set': update})
             flash('Book updated successfully!', 'success')
             return redirect(url_for('nook.my_uploads'))
@@ -260,10 +297,18 @@ def delete_book(book_id):
         current_app.mongo.db.books.delete_one({'_id': ObjectId(book_id), 'user_id': user_id})
         logger.info(f"Book {book_id} deleted by user {user_id}")
 
-        # Optionally, handle reward points (e.g., deduct points or log deletion)
+        # Log deletion
+        current_app.activity_logger.log_activity(
+            user_id=user_id,
+            action='book_deletion',
+            description=f'Deleted book: {book["title"]}',
+            metadata={'book_id': book_id}
+        )
+
+        # Handle reward points
         RewardService.award_points(
             user_id=user_id,
-            points=-5,  # Negative points for deletion, adjust as needed
+            points=-5,
             source='nook',
             description=f'Deleted book: {book["title"]}',
             category='book_management',
@@ -277,22 +322,54 @@ def delete_book(book_id):
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.my_uploads'))
 
-@nook_bp.route('/read/<book_id>')
+@nook_bp.route('/serve_pdf/<book_id>')
 @login_required
-def read_book(book_id):
+def serve_pdf(book_id):
     try:
         user_id = ObjectId(session.get('user_id'))
         if not user_id:
             flash("User session missing.", "danger")
             return redirect(url_for('nook.book_detail', book_id=book_id))
-        book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
+        
+        # Fetch user to check admin status
+        user = current_app.mongo.db.users.find_one({'_id': user_id})
+        if not user:
+            flash("User not found.", "danger")
+            return redirect(url_for('nook.book_detail', book_id=book_id))
+        
+        book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id)})
         if not book or not book.get('pdf_path'):
             flash('PDF not available for this book.', 'danger')
             return redirect(url_for('nook.book_detail', book_id=book_id))
         
-        pdf_url = url_for('static', filename=book['pdf_path'])
-        logger.info(f"Serving PDF for book {book_id} at {pdf_url}")
-        return render_template('nook/read_book.html', pdf_url=pdf_url, book=book)
+        # Restrict access to owner or admin
+        if not (book['user_id'] == user_id or user.get('is_admin', False)):
+            flash('You do not have permission to view this file.', 'danger')
+            return redirect(url_for('nook.book_detail', book_id=book_id))
+        
+        pdf_path_full = os.path.join(current_app.root_path, 'static', book['pdf_path'])
+        if not os.path.exists(pdf_path_full):
+            flash('PDF file not found.', 'danger')
+            return redirect(url_for('nook.book_detail', book_id=book_id))
+        
+        # Decrypt PDF
+        with open(pdf_path_full, 'rb') as f:
+            encrypted_pdf = f.read()
+        decrypted_pdf = fernet.decrypt(encrypted_pdf)
+        
+        # Log access
+        current_app.activity_logger.log_activity(
+            user_id=user_id,
+            action='pdf_access',
+            description=f'Accessed PDF for book: {book["title"]}',
+            metadata={'book_id': book_id}
+        )
+
+        return send_file(
+            BytesIO(decrypted_pdf),
+            mimetype='application/pdf',
+            as_attachment=False
+        )
     except Exception as e:
         logger.error(f"Error serving PDF for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -503,6 +580,14 @@ def add_quote(book_id):
         current_app.mongo.db.books.update_one(
             {'_id': ObjectId(book_id), 'user_id': user_id},
             {'$push': {'quotes': quote_data}}
+        )
+        
+        # Log quote submission
+        current_app.activity_logger.log_activity(
+            user_id=user_id,
+            action='quote_submission',
+            description=f'Submitted quote for book: {book_id}',
+            metadata={'book_id': book_id, 'quote': quote}
         )
         
         # Award points for adding quote
