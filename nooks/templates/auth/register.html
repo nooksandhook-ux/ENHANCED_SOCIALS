@@ -40,10 +40,19 @@
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label for="confirm_password" class="form-label">Confirm Password</label>
                         <input type="password" class="form-control {% if form.confirm_password.errors %}is-invalid{% endif %}" id="confirm_password" name="confirm_password" required>
                         {% for error in form.confirm_password.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input {% if form.accept_terms.errors %}is-invalid{% endif %}" id="accept_terms" name="accept_terms" required>
+                        <label class="form-check-label" for="accept_terms">
+                            I accept the <a href="{{ url_for('general.terms') }}" target="_blank">Terms of Service</a>
+                        </label>
+                        {% for error in form.accept_terms.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                     </div>
