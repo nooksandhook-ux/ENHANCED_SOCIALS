@@ -32,14 +32,22 @@
                 
                 <!-- Manual Entry Form -->
                 <form method="POST" id="add-book-form" enctype="multipart/form-data">
+                    {{ form.csrf_token }} <!-- Added CSRF token -->
                     <div class="mb-3">
                         <label for="pdf_file" class="form-label">Upload Book (PDF only, max 10MB)</label>
                         <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept="application/pdf">
-                        <div class="form-text">Optional: Upload your own book as a PDF file.</div>
+                        <div class="form-text">Optional: Upload your own book as a PDF file. Files must be encrypted.</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="terms_agreement" name="terms_agreement" required>
+                        <label class="form-check-label" for="terms_agreement">
+                            I confirm I have the legal right to upload this PDF and agree to the <a href="{{ url_for('general.terms') }}" target="_blank">Terms of Service</a>.
+                        </label>
                     </div>
                     <!-- Hidden fields for Google Books data -->
                     <input type="hidden" id="google_books_id" name="google_books_id">
                     <input type="hidden" id="cover_image" name="cover_image">
+                    <input type="hidden" id="is_encrypted" name="is_encrypted" value="true"> <!-- Indicate encryption -->
                     
                     <div class="row">
                         <div class="col-md-8 mb-3">
