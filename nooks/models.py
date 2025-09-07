@@ -157,6 +157,15 @@ class DatabaseManager:
             current_app.mongo.db.user_purchases.create_index([("user_id", 1), ("item_id", 1)])
             current_app.mongo.db.user_purchases.create_index([("user_id", 1), ("type", 1)])
             
+            # Clubs collection indexes
+            current_app.mongo.db.clubs.create_index([("creator_id", 1)])
+            current_app.mongo.db.clubs.create_index([("members", 1)])
+            current_app.mongo.db.clubs.create_index("created_at")
+            
+            # Club posts and chat messages indexes
+            current_app.mongo.db.club_posts.create_index([("club_id", 1), ("created_at", -1)])
+            current_app.mongo.db.club_chat_messages.create_index([("club_id", 1), ("timestamp", -1)])
+            
             logger.info("Database indexes created successfully")
             
         except Exception as e:
@@ -167,9 +176,9 @@ class DatabaseManager:
     def _create_default_admin():
         """Create default admin user from environment variables"""
         try:
-            admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-            admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
-            admin_email = os.environ.get('ADMIN_EMAIL', 'admin@nookhook.com')
+            admin_username = os.environ.get('ADMIN_USERNAME')
+            admin_password = os.environ.get('ADMIN_PASSWORD')
+            admin_email = os.environ.get('ADMIN_EMAIL')
             
             existing_admin = current_app.mongo.db.users.find_one({
                 '$or': [
@@ -374,6 +383,20 @@ class ClubModel:
     @staticmethod
     def get_all_clubs():
         return list(current_app.mongo.db.clubs.find({'is_active': True}))
+
+    @staticmethod
+    def get_user_clubs(user_id):
+        return list(current_app.mongo.db.clubs.find({
+            'members': user_id,
+            'is_active': True
+        }))
+
+    @staticmethod
+    def get_created_clubs(creator_id):
+        return list(current_app.mongo.db.clubs.find({
+            'creator_id': creator_id,
+            'is_active': True
+        }))
 
 class ClubPostModel:
     @staticmethod
@@ -586,6 +609,16 @@ class UserModel:
             return current_app.mongo.db.users.find_one({'_id': ObjectId(user_id)})
         except Exception as e:
             logger.error(f"Error getting user by ID: {str(e)}")
+            return None
+    
+    @staticmethod
+    def get_username_by_id(user_id):
+        """Get username by user ID"""
+        try:
+            user = current_app.mongo.db.users.find_one({'_id': ObjectId(user_id)}, {'username': 1})
+            return user.get('username') if user else None
+        except Exception as e:
+            logger.error(f"Error getting username for user_id {user_id}: {str(e)}")
             return None
     
     @staticmethod
