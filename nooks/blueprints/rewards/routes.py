@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime, timedelta
-from utils.decorators import login_required
 from .services import RewardService
 
 rewards_bp = Blueprint('rewards', __name__, template_folder='templates')
@@ -9,7 +9,7 @@ rewards_bp = Blueprint('rewards', __name__, template_folder='templates')
 @rewards_bp.route('/')
 @login_required
 def index():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get user's total points and level
     user = current_app.mongo.db.users.find_one({'_id': user_id})
@@ -40,7 +40,7 @@ def index():
 @rewards_bp.route('/history')
 @login_required
 def history():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get filter parameters
     source_filter = request.args.get('source', 'all')
@@ -98,7 +98,7 @@ def history():
 @rewards_bp.route('/badges')
 @login_required
 def badges():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get user's earned badges
     earned_badges = RewardService.get_user_badges(user_id)
@@ -143,11 +143,10 @@ def leaderboard():
                 'total_points': entry['total_points'],
                 'reward_count': entry['reward_count'],
                 'level': RewardService.calculate_level(entry['total_points']),
-                'is_current_user': str(entry['_id']) == session['user_id']
+                'is_current_user': str(entry['_id']) == str(current_user.id)
             })
     
     # Get current user's rank
-    current_user_id = ObjectId(session['user_id'])
     current_user_rank = None
     for i, entry in enumerate(leaderboard):
         if entry['is_current_user']:
@@ -161,7 +160,7 @@ def leaderboard():
 @rewards_bp.route('/achievements')
 @login_required
 def achievements():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get user's achievements
     achievements = RewardService.get_user_achievements(user_id)
@@ -176,7 +175,7 @@ def achievements():
 @rewards_bp.route('/api/user_points')
 @login_required
 def api_user_points():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     total_points = RewardService.get_user_total_points(user_id)
     level = RewardService.calculate_level(total_points)
     
@@ -189,7 +188,7 @@ def api_user_points():
 @rewards_bp.route('/api/recent_rewards')
 @login_required
 def api_recent_rewards():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     rewards = list(current_app.mongo.db.rewards.find({
         'user_id': user_id
@@ -207,7 +206,7 @@ def api_recent_rewards():
 @login_required
 def api_award_custom_points():
     """Admin endpoint to award custom points"""
-    if not session.get('is_admin', False):
+    if not getattr(current_user, 'is_admin', False):
         return jsonify({'error': 'Admin access required'}), 403
     
     user_id = ObjectId(request.json['user_id'])
@@ -228,7 +227,7 @@ def api_award_custom_points():
 @rewards_bp.route('/shop')
 @login_required
 def shop():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get shop items
     shop_items = RewardService.get_shop_items()
@@ -258,7 +257,7 @@ def shop():
 @rewards_bp.route('/shop/purchase', methods=['POST'])
 @login_required
 def purchase_item():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     item_id = request.json.get('item_id')
     
     success, message = RewardService.purchase_item(user_id, item_id)
@@ -271,7 +270,7 @@ def purchase_item():
 @rewards_bp.route('/progress')
 @login_required
 def progress():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get progress towards next achievements
     progress_data = RewardService.get_achievement_progress(user_id)
@@ -343,7 +342,7 @@ def progress():
 @rewards_bp.route('/analytics')
 @login_required
 def analytics():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get reward analytics
     analytics_data = RewardService.get_reward_analytics(user_id)
