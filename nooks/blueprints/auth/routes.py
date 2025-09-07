@@ -4,7 +4,6 @@ from wtforms import StringField, PasswordField, SubmitField, BooleanField, Selec
 from wtforms.validators import DataRequired, Email, EqualTo, Length
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson import ObjectId
-from datetime import datetime
 from flask_login import login_user, logout_user, login_required, current_user
 from models import UserModel, User
 import logging
@@ -49,9 +48,9 @@ class SettingsForm(FlaskForm):
 
 # Flask-WTF Form for Change Password
 class ChangePasswordForm(FlaskForm):
-    current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
-    confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password')])
+    current_password = PasswordField('Current Password')  # Removed DataRequired
+    new_password = PasswordField('New Password', validators=[Length(min=6, message='Password must be at least 6 characters long')])
+    confirm_password = PasswordField('Confirm New Password', validators=[EqualTo('new_password', message='Passwords must match')])
     submit = SubmitField('Change Password')
 
 # Flask-WTF Form for Avatar Customization
@@ -164,7 +163,7 @@ def profile():
     user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
     return render_template('auth/profile.html', user=user, stats=stats)
 
-@auth_bp.route('/settings', methods=['GET', 'POST'])
+@auth_bp.route('/settings', methods=['GET'])
 @login_required
 def settings():
     settings_form = SettingsForm()
@@ -188,72 +187,6 @@ def settings():
     customization_options = get_avatar_customization_options(current_style)
     avatar_form.hair.choices = [(opt, opt) for opt in customization_options.get('hair', ['short01', 'long01'])]
     avatar_form.background_color.choices = [(opt, opt) for opt in customization_options.get('backgroundColor', ['#ffffff', '#000000'])]
-
-    if request.method == 'POST':
-        if settings_form.submit.data and settings_form.validate_on_submit():
-            preferences = {
-                'notifications': settings_form.notifications.data,
-                'theme': settings_form.theme.data,
-                'timer_sound': settings_form.timer_sound.data,
-                'default_timer_duration': settings_form.default_timer_duration.data,
-                'animations': settings_form.animations.data,
-                'compact_mode': settings_form.compact_mode.data,
-                'timer_theme': settings_form.timer_theme.data,
-                'dashboard_layout': settings_form.dashboard_layout.data,
-                'avatar': user.get('preferences', {}).get('avatar', {
-                    'style': 'avataaars',
-                    'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
-                })
-            }
-            UserModel.update_user(current_user.id, {'preferences': preferences})
-            logger.info(f"Settings updated for user_id: {current_user.id}")
-            flash('Settings updated successfully!', 'success')
-            return redirect(url_for('auth.settings'))
-        
-        elif change_password_form.submit.data and change_password_form.validate_on_submit():
-            user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
-            if not user or 'password_hash' not in user:
-                logger.error(f"Change password failed for user_id: {current_user.id} - User account error")
-                flash('User account error. Please contact support.', 'error')
-                return redirect(url_for('auth.settings'))
-            if not check_password_hash(user['password_hash'], change_password_form.current_password.data):
-                logger.warning(f"Change password failed for user_id: {current_user.id} - Incorrect current password")
-                flash('Current password is incorrect', 'error')
-                return redirect(url_for('auth.settings'))
-            UserModel.update_user(current_user.id, {
-                'password_hash': generate_password_hash(change_password_form.new_password.data)
-            })
-            logger.info(f"Password changed successfully for user_id: {current_user.id}")
-            flash('Password changed successfully!', 'success')
-            return redirect(url_for('auth.settings'))
-        
-        elif avatar_form.submit.data and avatar_form.validate_on_submit():
-            avatar_options = {
-                'hair': avatar_form.hair.data,  # Already a list from SelectMultipleField
-                'backgroundColor': avatar_form.background_color.data,  # Already a list
-                'flip': avatar_form.flip.data
-            }
-            is_valid, error = validate_avatar_options(avatar_form.avatar_style.data, avatar_options)
-            if not is_valid:
-                logger.warning(f"Avatar form validation failed for user_id: {current_user.id} - {error}")
-                flash(f"Invalid avatar options: {error}", 'error')
-                return redirect(url_for('auth.settings'))
-            preferences = user.get('preferences', {})
-            preferences['avatar'] = {
-                'style': avatar_form.avatar_style.data,
-                'options': avatar_options
-            }
-            UserModel.update_user(current_user.id, {'preferences': preferences})
-            logger.info(f"Avatar settings updated for user_id: {current_user.id}")
-            flash('Avatar settings updated successfully!', 'success')
-            return redirect(url_for('auth.settings'))
-        
-        for form, form_name in [(settings_form, 'Settings'), (change_password_form, 'Change Password'), (avatar_form, 'Avatar')]:
-            if form.errors:
-                logger.warning(f"{form_name} form validation failed for user_id: {current_user.id} - {form.errors}")
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        flash(f"{field}: {error}", 'error')
 
     # Pre-populate forms with existing user data
     if user and 'preferences' in user:
@@ -282,32 +215,111 @@ def settings():
         avatar_form=avatar_form
     )
 
-@auth_bp.route('/change_password', methods=['POST'])
+@auth_bp.route('/settings/general', methods=['POST'])
+@login_required
+def update_general_settings():
+    settings_form = SettingsForm()
+    if settings_form.validate_on_submit():
+        preferences = {
+            'notifications': settings_form.notifications.data,
+            'theme': settings_form.theme.data,
+            'timer_sound': settings_form.timer_sound.data,
+            'default_timer_duration': settings_form.default_timer_duration.data,
+            'animations': settings_form.animations.data,
+            'compact_mode': settings_form.compact_mode.data,
+            'timer_theme': settings_form.timer_theme.data,
+            'dashboard_layout': settings_form.dashboard_layout.data,
+        }
+        # Preserve existing avatar settings
+        user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
+        if user and 'preferences' in user:
+            preferences['avatar'] = user['preferences'].get('avatar', {
+                'style': 'avataaars',
+                'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
+            })
+        UserModel.update_user(current_user.id, {'preferences': preferences})
+        logger.info(f"General settings updated for user_id: {current_user.id}")
+        flash('General settings updated successfully!', 'success')
+    else:
+        logger.warning(f"General settings form validation failed for user_id: {current_user.id} - {settings_form.errors}")
+        for field, errors in settings_form.errors.items():
+            for error in errors:
+                flash(f"General Settings - {field}: {error}", 'error')
+    return redirect(url_for('auth.settings'))
+
+@auth_bp.route('/settings/avatar', methods=['POST'])
+@login_required
+def update_avatar_settings():
+    avatar_form = AvatarForm()
+    user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
+    # Dynamically populate avatar style choices
+    user_purchases = current_app.mongo.db.user_purchases.find({'user_id': ObjectId(current_user.id), 'type': 'avatar_style'})
+    purchased_styles = [p['item_id'] for p in user_purchases]
+    free_styles = get_free_avatar_styles()
+    available_styles = [(style['style'], style['display_name']) for style in get_available_avatars() 
+                        if style['style'] in free_styles or style['style'] in purchased_styles]
+    if not available_styles:
+        available_styles = [('avataaars', 'Avataaars')]
+        logger.warning("No available avatar styles found, using default")
+    avatar_form.avatar_style.choices = available_styles
+    # Dynamically populate customization options
+    current_style = avatar_form.avatar_style.data or user.get('preferences', {}).get('avatar', {}).get('style', 'avataaars')
+    customization_options = get_avatar_customization_options(current_style)
+    avatar_form.hair.choices = [(opt, opt) for opt in customization_options.get('hair', ['short01', 'long01'])]
+    avatar_form.background_color.choices = [(opt, opt) for opt in customization_options.get('backgroundColor', ['#ffffff', '#000000'])]
+    
+    if avatar_form.validate_on_submit():
+        avatar_options = {
+            'hair': avatar_form.hair.data,
+            'backgroundColor': avatar_form.background_color.data,
+            'flip': avatar_form.flip.data
+        }
+        is_valid, error = validate_avatar_options(avatar_form.avatar_style.data, avatar_options)
+        if not is_valid:
+            logger.warning(f"Avatar form validation failed for user_id: {current_user.id} - {error}")
+            flash(f"Avatar Settings - Invalid avatar options: {error}", 'error')
+            return redirect(url_for('auth.settings'))
+        preferences = user.get('preferences', {})
+        preferences['avatar'] = {
+            'style': avatar_form.avatar_style.data,
+            'options': avatar_options
+        }
+        UserModel.update_user(current_user.id, {'preferences': preferences})
+        logger.info(f"Avatar settings updated for user_id: {current_user.id}")
+        flash('Avatar settings updated successfully!', 'success')
+    else:
+        logger.warning(f"Avatar form validation failed for user_id: {current_user.id} - {avatar_form.errors}")
+        for field, errors in avatar_form.errors.items():
+            for error in errors:
+                flash(f"Avatar Settings - {field}: {error}", 'error')
+    return redirect(url_for('auth.settings'))
+
+@auth_bp.route('/settings/password', methods=['POST'])
 @login_required
 def change_password():
-    form = ChangePasswordForm()
-    if form.validate_on_submit():
+    change_password_form = ChangePasswordForm()
+    if change_password_form.validate_on_submit():
         user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
-        
         if not user or 'password_hash' not in user:
             logger.error(f"Change password failed for user_id: {current_user.id} - User account error")
-            flash('User account error. Please contact support.', 'error')
+            flash('Change Password - User account error. Please contact support.', 'error')
             return redirect(url_for('auth.settings'))
-        
-        if not check_password_hash(user['password_hash'], form.current_password.data):
+        if not change_password_form.current_password.data:
+            logger.warning(f"Change password failed for user_id: {current_user.id} - Current password not provided")
+            flash('Change Password - Current password is required', 'error')
+            return redirect(url_for('auth.settings'))
+        if not check_password_hash(user['password_hash'], change_password_form.current_password.data):
             logger.warning(f"Change password failed for user_id: {current_user.id} - Incorrect current password")
-            flash('Current password is incorrect', 'error')
+            flash('Change Password - Current password is incorrect', 'error')
             return redirect(url_for('auth.settings'))
-        
         UserModel.update_user(current_user.id, {
-            'password_hash': generate_password_hash(form.new_password.data)
+            'password_hash': generate_password_hash(change_password_form.new_password.data)
         })
         logger.info(f"Password changed successfully for user_id: {current_user.id}")
         flash('Password changed successfully!', 'success')
     else:
-        logger.warning(f"Change password form validation failed for user_id: {current_user.id} - {form.errors}")
-        for field, errors in form.errors.items():
+        logger.warning(f"Change password form validation failed for user_id: {current_user.id} - {change_password_form.errors}")
+        for field, errors in change_password_form.errors.items():
             for error in errors:
-                flash(f"{field}: {error}", 'error')
-    
+                flash(f"Change Password - {field}: {error}", 'error')
     return redirect(url_for('auth.settings'))
