@@ -34,7 +34,7 @@ footer {
 }
 
 .card {
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: transparent;
     border: 1px solid #ddd;
     border-radius: 8px;
     display: flex;
@@ -54,6 +54,7 @@ footer {
 /* Overview Cards */
 .overview-card {
     min-height: 200px;
+    background-color: transparent;
 }
 
 .total-books-card {
@@ -70,6 +71,23 @@ footer {
 
 .task-streak-card {
     border: 3px solid var(--hook-color) !important; /* cyan */
+}
+
+/* Home Page Cards */
+.nook-card {
+    border: 3px solid var(--nook-color) !important; /* green */
+}
+
+.hook-card {
+    border: 3px solid var(--hook-color) !important; /* cyan */
+}
+
+.nooks-club-card {
+    border: 3px solid var(--primary-color) !important; /* blue */
+}
+
+.mini-modules-card {
+    border: 3px solid #ffc107 !important; /* yellow */
 }
 
 /* Chart and Recent Activity Cards */
@@ -180,6 +198,10 @@ footer {
 [data-bs-theme="dark"] {
     --bs-body-bg: var(--high-contrast-bg-dark);
     --bs-body-color: var(--high-contrast-text-dark);
+}
+
+[data-bs-theme="dark"] .card {
+    color: var(--high-contrast-text-dark);
 }
 
 /* Responsive Design */
