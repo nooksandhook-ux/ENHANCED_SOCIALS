@@ -21,6 +21,14 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="px-3 py-2">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('general.home') }}">Home</a></li>
+            {{ generate_breadcrumbs() | safe }}
+        </ol>
+    </nav>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
