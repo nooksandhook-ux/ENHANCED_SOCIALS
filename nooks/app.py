@@ -29,7 +29,7 @@ from blueprints.nooks_club.routes import nooks_club_bp
 from blueprints.mini_modules.routes import mini_modules_bp
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def create_app():
@@ -180,6 +180,7 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
 
 
