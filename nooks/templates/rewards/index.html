@@ -27,25 +27,25 @@
 </div>
 
 <!-- User Level and Points -->
-<div class="row mb-4">
+<div class="row mb-4 cards-container">
     <div class="col-md-4">
-        <div class="card bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card stats-card">
             <div class="card-body text-center">
                 <i class="bi bi-star-fill display-3 mb-2"></i>
                 <h2 class="fw-bold">Level {{ current_level }}</h2>
                 <p class="mb-0">{{ total_points }} Total Points</p>
-                <div class="progress mt-2" style="height: 8px;">
+                <div class="progress mt-2">
                     <div class="progress-bar bg-warning" 
                          style="width: {{ ((total_points % (current_level ** 2 * 100)) / (current_level ** 2 * 100) * 100) | round(1) }}%">
                     </div>
                 </div>
-                <small class="text-light">{{ points_to_next_level }} points to Level {{ current_level + 1 }}</small>
+                <small>{{ points_to_next_level }} points to Level {{ current_level + 1 }}</small>
             </div>
         </div>
     </div>
     
     <div class="col-md-4">
-        <div class="card bg-success text-white">
+        <div class="card nook-card">
             <div class="card-body text-center">
                 <i class="bi bi-award display-3 mb-2"></i>
                 <h2 class="fw-bold">{{ badges | length }}</h2>
@@ -55,7 +55,7 @@
     </div>
     
     <div class="col-md-4">
-        <div class="card bg-info text-white">
+        <div class="card hook-card">
             <div class="card-body text-center">
                 <i class="bi bi-graph-up display-3 mb-2"></i>
                 <h2 class="fw-bold">{{ stats.recent_activity.count or 0 }}</h2>
@@ -68,9 +68,9 @@
 
 <!-- Recent Badges -->
 {% if badges %}
-<div class="row mb-4">
+<div class="row mb-4 cards-container">
     <div class="col-12">
-        <div class="card">
+        <div class="card recent-rewards-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Recent Badges</h5>
                 <a href="{{ url_for('rewards.badges') }}" class="btn btn-sm btn-outline-primary">View All</a>
@@ -94,9 +94,9 @@
 {% endif %}
 
 <!-- Points Breakdown -->
-<div class="row mb-4">
+<div class="row mb-4 cards-container">
     <div class="col-md-6">
-        <div class="card">
+        <div class="card nook-card">
             <div class="card-header">
                 <h5 class="mb-0">Points by Source</h5>
             </div>
@@ -122,7 +122,7 @@
     </div>
     
     <div class="col-md-6">
-        <div class="card">
+        <div class="card hook-card">
             <div class="card-header">
                 <h5 class="mb-0">Points by Category</h5>
             </div>
@@ -148,9 +148,9 @@
 </div>
 
 <!-- Recent Rewards -->
-<div class="row">
+<div class="row cards-container">
     <div class="col-12">
-        <div class="card">
+        <div class="card recent-rewards-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Recent Rewards</h5>
                 <a href="{{ url_for('rewards.history') }}" class="btn btn-sm btn-outline-primary">View All</a>
