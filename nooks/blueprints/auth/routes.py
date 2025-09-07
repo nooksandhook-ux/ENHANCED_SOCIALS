@@ -8,6 +8,7 @@ from datetime import datetime
 from flask_login import login_user, logout_user, login_required, current_user
 from models import UserModel, User
 import logging
+from blueprints.themes.routes import get_available_themes, get_timer_themes, get_available_avatars, get_free_avatar_styles, get_avatar_customization_options, validate_avatar_options
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,15 +34,17 @@ class RegisterForm(FlaskForm):
 # Flask-WTF Form for Settings
 class SettingsForm(FlaskForm):
     notifications = BooleanField('Enable Notifications')
-    theme = SelectField('Theme', choices=[
-        ('light', 'Light'),
-        ('dark', 'Dark'),
-        ('retro', 'Retro'),
-        ('neon', 'Neon'),
-        ('anime', 'Anime')
-    ])
+    theme = SelectField('Theme', choices=[(t['name'], t['display_name']) for t in get_available_themes()])
     timer_sound = BooleanField('Enable Timer Sound')
     default_timer_duration = IntegerField('Default Timer Duration (minutes)', validators=[DataRequired()])
+    animations = BooleanField('Enable Animations')
+    compact_mode = BooleanField('Compact Mode')
+    timer_theme = SelectField('Timer Theme', choices=[(t['name'], t['display_name']) for t in get_timer_themes()])
+    dashboard_layout = SelectField('Dashboard Layout', choices=[
+        ('default', 'Default'),
+        ('compact', 'Compact'),
+        ('detailed', 'Detailed')
+    ])
     submit = SubmitField('Save Settings')
 
 # Flask-WTF Form for Change Password
@@ -54,8 +57,8 @@ class ChangePasswordForm(FlaskForm):
 # Flask-WTF Form for Avatar Customization
 class AvatarForm(FlaskForm):
     avatar_style = SelectField('Avatar Style', validators=[DataRequired()])
-    hair = SelectField('Hair Style', validators=[DataRequired()])  # Changed to SelectField for single selection
-    background_color = SelectField('Background Color', validators=[DataRequired()])  # Changed to SelectField
+    hair = SelectMultipleField('Hair Style', validators=[DataRequired()])
+    background_color = SelectMultipleField('Background Color', validators=[DataRequired()])
     flip = BooleanField('Flip Avatar')
     submit = SubmitField('Save Avatar')
 
@@ -169,11 +172,9 @@ def settings():
     avatar_form = AvatarForm()
 
     # Dynamically populate avatar style choices
-    from blueprints.themes.routes import get_available_avatars, get_free_avatar_styles, get_avatar_customization_options
     user_purchases = current_app.mongo.db.user_purchases.find({'user_id': ObjectId(current_user.id), 'type': 'avatar_style'})
     purchased_styles = [p['item_id'] for p in user_purchases]
     free_styles = get_free_avatar_styles()
-    # Use 'style' instead of 'slug' and 'display_name' instead of 'name'
     available_styles = [(style['style'], style['display_name']) for style in get_available_avatars() 
                         if style['style'] in free_styles or style['style'] in purchased_styles]
     if not available_styles:
@@ -195,6 +196,10 @@ def settings():
                 'theme': settings_form.theme.data,
                 'timer_sound': settings_form.timer_sound.data,
                 'default_timer_duration': settings_form.default_timer_duration.data,
+                'animations': settings_form.animations.data,
+                'compact_mode': settings_form.compact_mode.data,
+                'timer_theme': settings_form.timer_theme.data,
+                'dashboard_layout': settings_form.dashboard_layout.data,
                 'avatar': user.get('preferences', {}).get('avatar', {
                     'style': 'avataaars',
                     'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
@@ -223,10 +228,9 @@ def settings():
             return redirect(url_for('auth.settings'))
         
         elif avatar_form.submit.data and avatar_form.validate_on_submit():
-            from blueprints.themes.routes import validate_avatar_options
             avatar_options = {
-                'hair': [avatar_form.hair.data],  # Wrap in list for consistency with schema
-                'backgroundColor': [avatar_form.background_color.data],  # Wrap in list
+                'hair': avatar_form.hair.data,  # Already a list from SelectMultipleField
+                'backgroundColor': avatar_form.background_color.data,  # Already a list
                 'flip': avatar_form.flip.data
             }
             is_valid, error = validate_avatar_options(avatar_form.avatar_style.data, avatar_options)
@@ -257,13 +261,17 @@ def settings():
         settings_form.theme.data = user['preferences'].get('theme', 'light')
         settings_form.timer_sound.data = user['preferences'].get('timer_sound', False)
         settings_form.default_timer_duration.data = user['preferences'].get('default_timer_duration', 25)
+        settings_form.animations.data = user['preferences'].get('animations', False)
+        settings_form.compact_mode.data = user['preferences'].get('compact_mode', False)
+        settings_form.timer_theme.data = user['preferences'].get('timer_theme', 'default')
+        settings_form.dashboard_layout.data = user['preferences'].get('dashboard_layout', 'default')
         avatar_data = user['preferences'].get('avatar', {
             'style': 'avataaars',
             'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
         })
         avatar_form.avatar_style.data = avatar_data['style']
-        avatar_form.hair.data = avatar_data['options']['hair'][0] if avatar_data['options']['hair'] else 'short01'
-        avatar_form.background_color.data = avatar_data['options']['backgroundColor'][0] if avatar_data['options']['backgroundColor'] else '#ffffff'
+        avatar_form.hair.data = avatar_data['options']['hair'] if avatar_data['options']['hair'] else ['short01']
+        avatar_form.background_color.data = avatar_data['options']['backgroundColor'] if avatar_data['options']['backgroundColor'] else ['#ffffff']
         avatar_form.flip.data = avatar_data['options']['flip']
 
     return render_template(
@@ -303,4 +311,3 @@ def change_password():
                 flash(f"{field}: {error}", 'error')
     
     return redirect(url_for('auth.settings'))
-
