@@ -44,9 +44,9 @@ footer {
     text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.15);
     transition: transform 0.2s ease-in-out;
     min-height: auto;
-    max-height: 380px;
-    padding: 1rem;
+    padding: 1.5rem; /* Increased padding for internal spacing */
     box-sizing: border-box;
+    margin: 0.75rem; /* Added margin to separate cards visually */
 }
 
 .card:hover {
@@ -101,38 +101,42 @@ footer {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 0.75rem;
+    gap: 1rem; /* Increased gap for better spacing */
     height: 100%;
+    padding: 1.5rem; /* Increased padding for internal spacing */
 }
 
 /* Card Footer */
 .card-footer {
-    margin-top: auto; /* Pushes footer to bottom of card */
-    padding: 0.5rem 0; /* Adds padding to prevent overlap */
+    margin-top: auto; /* Pushes footer to bottom */
+    padding: 1rem 0; /* Increased padding for separation */
     text-align: center;
+    border-top: 1px solid #eee; /* Subtle separator for clarity */
 }
 
-/* Wrapper container for the cards, ensuring equal height and baseline alignment */
+/* Wrapper container for the cards, ensuring equal height and separation */
 .cards-container {
-    margin-bottom: 2rem; /* Adds spacing below cards to separate from Quick Actions */
+    margin-bottom: 3rem; /* Increased margin to separate from Quick Actions */
 }
 
 .cards-container .row {
     display: flex;
     flex-wrap: wrap;
-    align-items: stretch; /* Makes all cards match the tallest card's height */
+    align-items: stretch; /* Makes all cards match tallest height */
+    gap: 1rem; /* Added gap to separate cards */
 }
 
 .cards-container .card {
-    height: 100%; /* Ensures cards stretch to fill the row */
+    height: 100%; /* Ensures cards stretch to tallest */
 }
 
-/* Align all cards buttons above footer */
+/* Align card buttons above footer */
 .card-buttons {
     display: flex !important;
-    flex-direction: column; /* Stack buttons vertically inside each card */
-    gap: 0.5rem !important;
-    margin-top: 1rem !important; /* Ensures buttons are above footer */
+    flex-direction: column;
+    gap: 0.75rem !important; /* Slightly increased for clarity */
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important; /* Added to separate from footer */
 }
 
 .card-buttons .btn {
@@ -146,7 +150,8 @@ footer {
 
 /* Quick Actions Section */
 .quick-actions-section {
-    margin-top: 3rem; /* Increased margin to ensure separation from cards */
+    margin-top: 4rem; /* Increased to ensure clear separation */
+    margin-bottom: 2rem; /* Added to prevent overlap with content below */
 }
 
 .quick-actions.btn {
@@ -222,7 +227,11 @@ footer {
 /* Responsive Design */
 @media (max-width: 768px) {
     .cards-container .row {
-        display: block; /* Revert to Bootstrap grid on small screens */
+        display: block; /* Revert to block for stacking */
+        gap: 0; /* Remove gap as block layout handles spacing */
+    }
+    .card {
+        margin: 0.5rem 0; /* Adjusted margin for mobile */
     }
     .timer-display {
         font-size: 2.5rem;
