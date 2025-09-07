@@ -18,9 +18,9 @@
 
 <!-- Overview Cards -->
 <div class="cards-container">
-    <div class="row g-0 mb-4">
+    <div class="row mb-4 g-0">
         <div class="col-md-3">
-            <div class="card nook-card text-white">
+            <div class="card bg-primary text-white total-books-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-book display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ books | length }}</h3>
@@ -29,7 +29,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card hook-card text-white">
+            <div class="card bg-success text-white completed-tasks-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-check-circle display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ tasks | length }}</h3>
@@ -38,7 +38,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card streak-card text-white">
+            <div class="card bg-warning text-white reading-streak-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-fire display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ reading_streak }}</h3>
@@ -47,7 +47,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card task-card text-white">
+            <div class="card bg-info text-white task-streak-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-lightning display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ task_streak }}</h3>
@@ -60,9 +60,9 @@
 
 <!-- Charts Row -->
 <div class="cards-container">
-    <div class="row g-0 mb-4">
+    <div class="row mb-4 g-0">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card reading-progress-card">
                 <div class="card-header">
                     <h5 class="mb-0">Reading Progress</h5>
                 </div>
@@ -72,7 +72,7 @@
             </div>
         </div>
         <div class="col-md-6">
-            <div class="card">
+            <div class="card task-analytics-card">
                 <div class="card-header">
                     <h5 class="mb-0">Task Analytics</h5>
                 </div>
@@ -88,7 +88,7 @@
 <div class="cards-container">
     <div class="row g-0">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card recent-books-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Books</h5>
                     <div class="card-buttons">
@@ -123,7 +123,7 @@
         </div>
         
         <div class="col-md-6">
-            <div class="card">
+            <div class="card recent-rewards-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Rewards</h5>
                     <small class="text-muted">Points earned</small>
