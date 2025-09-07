@@ -7,10 +7,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-graph-up me-2"></i>Dashboard</h1>
     <div class="btn-group" role="group">
-        <a href="{{ url_for('nook.index') }}" class="btn btn-outline-success">
+        <a href="{{ url_for('nook.index') }}" class="btn btn-nook">
             <i class="bi bi-book me-1"></i>Nook
         </a>
-        <a href="{{ url_for('hook.index') }}" class="btn btn-outline-info">
+        <a href="{{ url_for('hook.index') }}" class="btn btn-hook">
             <i class="bi bi-stopwatch me-1"></i>Hook
         </a>
     </div>
@@ -20,7 +20,7 @@
 <div class="cards-container">
     <div class="row mb-4 g-0">
         <div class="col-md-3">
-            <div class="card total-books-card overview-card text-dark">
+            <div class="card total-books-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-book display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ books | length }}</h3>
@@ -29,7 +29,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card completed-tasks-card overview-card text-dark">
+            <div class="card completed-tasks-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-check-circle display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ tasks | length }}</h3>
@@ -38,7 +38,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card reading-streak-card overview-card text-dark">
+            <div class="card reading-streak-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-fire display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ reading_streak }}</h3>
@@ -47,7 +47,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card task-streak-card overview-card text-dark">
+            <div class="card task-streak-card overview-card">
                 <div class="card-body text-center">
                     <i class="bi bi-lightning display-4 mb-2"></i>
                     <h3 class="fw-bold">{{ task_streak }}</h3>
@@ -92,7 +92,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Books</h5>
                     <div class="card-buttons">
-                        <a href="{{ url_for('nook.index') }}" class="btn btn-sm btn-outline-success">
+                        <a href="{{ url_for('nook.index') }}" class="btn btn-sm btn-nook">
                             <span>View All</span>
                         </a>
                     </div>
@@ -107,8 +107,8 @@
                                     <small class="text-muted">by {{ book.authors | join(', ') }}</small>
                                 </div>
                                 <span class="badge 
-                                    {% if book.status == 'reading' %}bg-warning
-                                    {% elif book.status == 'finished' %}bg-success
+                                    {% if book.status == 'reading' %}bg-warning text-dark
+                                    {% elif book.status == 'finished' %}bg-nook
                                     {% else %}bg-secondary{% endif %}">
                                     {{ book.status.title() }}
                                 </span>
@@ -157,8 +157,8 @@
     <div class="col-12 text-center">
         <h1 class="display-4 fw-bold text-primary">Welcome to Nook & Hook</h1>
         <p class="lead text-muted">Please log in to access your dashboard.</p>
-        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">Login</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg">Register</a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-login btn-lg">Login</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-register btn-lg">Register</a>
     </div>
 </div>
 {% endif %}
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     datasets: [{
                         label: 'Pages Read',
                         data: values,
-                        borderColor: 'rgb(25, 135, 84)',
+                        borderColor: 'var(--nook-color)',
                         backgroundColor: 'rgba(25, 135, 84, 0.1)',
                         tension: 0.1
                     }]
@@ -219,11 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     datasets: [{
                         data: counts,
                         backgroundColor: [
-                            '#0d6efd',
-                            '#198754',
+                            'var(--primary-color)',
+                            'var(--nook-color)',
                             '#dc3545',
                             '#ffc107',
-                            '#0dcaf0',
+                            'var(--hook-color)',
                             '#6f42c1'
                         ]
                     }]
