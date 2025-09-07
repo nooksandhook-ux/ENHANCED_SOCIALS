@@ -1,14 +1,14 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime
-from utils.decorators import login_required
 
 themes_bp = Blueprint('themes', __name__, template_folder='templates')
 
 @themes_bp.route('/')
 @login_required
 def index():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
     current_theme = user.get('preferences', {}).get('theme', 'light')
@@ -23,7 +23,7 @@ def index():
 @themes_bp.route('/set_theme', methods=['POST'])
 @login_required
 def set_theme():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     theme_name = request.form['theme']
     
     # Validate theme
@@ -38,16 +38,13 @@ def set_theme():
         {'$set': {'preferences.theme': theme_name}}
     )
     
-    # Update session
-    session['theme'] = theme_name
-    
     flash(f'Theme changed to {theme_name.title()}!', 'success')
     return redirect(url_for('themes.index'))
 
 @themes_bp.route('/customize')
 @login_required
 def customize():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
     preferences = user.get('preferences', {})
@@ -57,7 +54,7 @@ def customize():
 @themes_bp.route('/save_customization', methods=['POST'])
 @login_required
 def save_customization():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get current preferences
     user = current_app.mongo.db.users.find_one({'_id': user_id})
@@ -87,7 +84,7 @@ def save_customization():
 @themes_bp.route('/timer_themes')
 @login_required
 def timer_themes():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
     current_timer_theme = user.get('preferences', {}).get('timer_theme', 'default')
@@ -102,7 +99,7 @@ def timer_themes():
 @themes_bp.route('/set_timer_theme', methods=['POST'])
 @login_required
 def set_timer_theme():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     timer_theme = request.form['timer_theme']
     
     # Update user preferences
@@ -130,7 +127,7 @@ def api_theme_preview(theme_name):
 @login_required
 def export_theme():
     """Export user's current theme settings"""
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
     preferences = user.get('preferences', {})
@@ -147,7 +144,7 @@ def export_theme():
 @login_required
 def import_theme():
     """Import theme settings"""
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     try:
         import json
