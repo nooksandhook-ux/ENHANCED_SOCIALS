@@ -173,8 +173,12 @@ def settings():
     user_purchases = current_app.mongo.db.user_purchases.find({'user_id': ObjectId(current_user.id), 'type': 'avatar_style'})
     purchased_styles = [p['item_id'] for p in user_purchases]
     free_styles = get_free_avatar_styles()
-    available_styles = [(style['slug'], style['name']) for style in get_available_avatars() 
-                        if style['slug'] in free_styles or style['slug'] in purchased_styles]
+    # Use 'style' instead of 'slug' and 'display_name' instead of 'name'
+    available_styles = [(style['style'], style['display_name']) for style in get_available_avatars() 
+                        if style['style'] in free_styles or style['style'] in purchased_styles]
+    if not available_styles:
+        available_styles = [('avataaars', 'Avataaars')]  # Default fallback
+        logger.warning("No available avatar styles found, using default")
     avatar_form.avatar_style.choices = available_styles
 
     # Dynamically populate customization options
@@ -196,7 +200,6 @@ def settings():
                     'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
                 })
             }
-            
             UserModel.update_user(current_user.id, {'preferences': preferences})
             logger.info(f"Settings updated for user_id: {current_user.id}")
             flash('Settings updated successfully!', 'success')
@@ -204,17 +207,14 @@ def settings():
         
         elif change_password_form.submit.data and change_password_form.validate_on_submit():
             user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
-            
             if not user or 'password_hash' not in user:
                 logger.error(f"Change password failed for user_id: {current_user.id} - User account error")
                 flash('User account error. Please contact support.', 'error')
                 return redirect(url_for('auth.settings'))
-            
             if not check_password_hash(user['password_hash'], change_password_form.current_password.data):
                 logger.warning(f"Change password failed for user_id: {current_user.id} - Incorrect current password")
                 flash('Current password is incorrect', 'error')
                 return redirect(url_for('auth.settings'))
-            
             UserModel.update_user(current_user.id, {
                 'password_hash': generate_password_hash(change_password_form.new_password.data)
             })
@@ -234,7 +234,6 @@ def settings():
                 logger.warning(f"Avatar form validation failed for user_id: {current_user.id} - {error}")
                 flash(f"Invalid avatar options: {error}", 'error')
                 return redirect(url_for('auth.settings'))
-            
             preferences = user.get('preferences', {})
             preferences['avatar'] = {
                 'style': avatar_form.avatar_style.data,
@@ -258,7 +257,6 @@ def settings():
         settings_form.theme.data = user['preferences'].get('theme', 'light')
         settings_form.timer_sound.data = user['preferences'].get('timer_sound', False)
         settings_form.default_timer_duration.data = user['preferences'].get('default_timer_duration', 25)
-        
         avatar_data = user['preferences'].get('avatar', {
             'style': 'avataaars',
             'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
@@ -271,7 +269,7 @@ def settings():
     return render_template(
         'auth/settings.html',
         user=user,
-        form=settings_form,  # Match template variable name
+        form=settings_form,
         change_password_form=change_password_form,
         avatar_form=avatar_form
     )
@@ -305,3 +303,4 @@ def change_password():
                 flash(f"{field}: {error}", 'error')
     
     return redirect(url_for('auth.settings'))
+
