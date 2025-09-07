@@ -1,4 +1,4 @@
-/* Theme-specific styles for Nook & Hook */
+/* Theme-specific styles for Nooks App */
 
 /* Light Theme (Default) */
 [data-theme="light"] {
@@ -80,7 +80,9 @@
 [data-theme="neon"] .card {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3
+
+);
 }
 
 [data-theme="neon"] .btn-primary {
@@ -210,6 +212,10 @@
 .timer-theme-zen {
     background: linear-gradient(135deg, #f7f7f7 0%, #e8e8e8 100%);
     color: #555555;
+}
+
+.timer-active {
+    animation: pulse 2s infinite;
 }
 
 /* Animation Classes */
