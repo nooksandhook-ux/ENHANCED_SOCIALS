@@ -5,8 +5,8 @@ from wtforms.validators import DataRequired, Email, EqualTo, Length
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson import ObjectId
 from datetime import datetime
-from utils.decorators import login_required
-from models import UserModel
+from flask_login import login_user, logout_user, login_required, current_user
+from models import UserModel, User
 import logging
 
 # Configure logging
@@ -63,7 +63,8 @@ def login():
             user = UserModel.authenticate_user(email, password)
 
             if user:
-                session['user_id'] = str(user['_id'])
+                login_user(User(user))  # Set Flask-Login session
+                session['user_id'] = str(user['_id'])  # Keep for legacy support
                 session['username'] = user['username']
                 session['email'] = user['email']
                 session['is_admin'] = user.get('is_admin', False)
@@ -132,7 +133,8 @@ def register():
 
 @auth_bp.route('/logout')
 def logout():
-    session.clear()
+    logout_user()  # Clear Flask-Login session
+    session.clear()  # Clear custom session data
     logger.info("User logged out")
     flash('You have been logged out', 'info')
     return redirect(url_for('general.landing'))
@@ -140,30 +142,21 @@ def logout():
 @auth_bp.route('/profile')
 @login_required
 def profile():
-    user = current_app.mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
-    
-    # Get user statistics
-    total_books = current_app.mongo.db.books.count_documents({'user_id': ObjectId(session['user_id'])})
-    finished_books = current_app.mongo.db.books.count_documents({
-        'user_id': ObjectId(session['user_id']),
-        'status': 'finished'
-    })
-    total_tasks = current_app.mongo.db.completed_tasks.count_documents({'user_id': ObjectId(session['user_id'])})
-    total_rewards = current_app.mongo.db.rewards.count_documents({'user_id': ObjectId(session['user_id'])})
-    
     stats = {
-        'total_books': total_books,
-        'finished_books': finished_books,
-        'total_tasks': total_tasks,
-        'total_rewards': total_rewards
+        'total_books': current_app.mongo.db.books.count_documents({'user_id': ObjectId(current_user.id)}),
+        'finished_books': current_app.mongo.db.books.count_documents({
+            'user_id': ObjectId(current_user.id),
+            'status': 'finished'
+        }),
+        'total_tasks': current_app.mongo.db.completed_tasks.count_documents({'user_id': ObjectId(current_user.id)}),
+        'total_rewards': current_app.mongo.db.rewards.count_documents({'user_id': ObjectId(current_user.id)})
     }
     
-    return render_template('auth/profile.html', user=user, stats=stats)
+    return render_template('auth/profile.html', user=current_user, stats=stats)
 
 @auth_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
-    user_id = ObjectId(session['user_id'])
     form = SettingsForm()
     
     if request.method == 'POST' and form.validate_on_submit():
@@ -175,23 +168,23 @@ def settings():
         }
         
         current_app.mongo.db.users.update_one(
-            {'_id': user_id},
+            {'_id': ObjectId(current_user.id)},
             {'$set': {'preferences': preferences}}
         )
         
-        logger.info(f"Settings updated for user_id: {user_id}")
+        logger.info(f"Settings updated for user_id: {current_user.id}")
         flash('Settings updated successfully!', 'success')
         return redirect(url_for('auth.settings'))
     
     # Flash validation errors if form submission fails
     if request.method == 'POST':
-        logger.warning(f"Settings form validation failed for user_id: {user_id} - {form.errors}")
+        logger.warning(f"Settings form validation failed for user_id: {current_user.id} - {form.errors}")
         for field, errors in form.errors.items():
             for error in errors:
                 flash(f"{field}: {error}", 'error')
     
     # Pre-populate form with existing user preferences
-    user = current_app.mongo.db.users.find_one({'_id': user_id})
+    user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
     if user and 'preferences' in user:
         form.notifications.data = user['preferences'].get('notifications', False)
         form.theme.data = user['preferences'].get('theme', 'light')
@@ -203,34 +196,33 @@ def settings():
 @auth_bp.route('/change_password', methods=['POST'])
 @login_required
 def change_password():
-    user_id = ObjectId(session['user_id'])
     form = ChangePasswordForm()
     
     if form.validate_on_submit():
-        user = current_app.mongo.db.users.find_one({'_id': user_id})
+        user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
         
         if not user or 'password_hash' not in user:
-            logger.error(f"Change password failed for user_id: {user_id} - User account error")
+            logger.error(f"Change password failed for user_id: {current_user.id} - User account error")
             flash('User account error. Please contact support.', 'error')
             return redirect(url_for('auth.settings'))
         
         if not check_password_hash(user['password_hash'], form.current_password.data):
-            logger.warning(f"Change password failed for user_id: {user_id} - Incorrect current password")
+            logger.warning(f"Change password failed for user_id: {current_user.id} - Incorrect current password")
             flash('Current password is incorrect', 'error')
             return redirect(url_for('auth.settings'))
         
         # Update password
         current_app.mongo.db.users.update_one(
-            {'_id': user_id},
+            {'_id': ObjectId(current_user.id)},
             {'$set': {'password_hash': generate_password_hash(form.new_password.data)}}
         )
         
-        logger.info(f"Password changed successfully for user_id: {user_id}")
+        logger.info(f"Password changed successfully for user_id: {current_user.id}")
         flash('Password changed successfully!', 'success')
         return redirect(url_for('auth.settings'))
     
     # If form validation fails, flash errors
-    logger.warning(f"Change password form validation failed for user_id: {user_id} - {form.errors}")
+    logger.warning(f"Change password form validation failed for user_id: {current_user.id} - {form.errors}")
     for field, errors in form.errors.items():
         for error in errors:
             flash(f"{field}: {error}", 'error')
