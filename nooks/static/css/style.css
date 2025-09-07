@@ -10,17 +10,38 @@
 }
 
 /* General Styles */
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--high-contrast-bg-light);
     color: var(--high-contrast-text-light);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+footer {
+    flex-shrink: 0;
+    width: 100%;
 }
 
 .card {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ddd;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 350px;
+    color: #222;
+    text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.15);
     transition: transform 0.2s ease-in-out;
 }
 
@@ -31,40 +52,60 @@ body {
 .card-body {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 1rem;
     height: 100%;
 }
-.card {
-  background-color: rgba(255, 255, 255, 0.8)!important;
-  min-height: auto!important;
-  height: auto!important;
-  max-height: 350px;
-  color: #222!important;
-  gap: 1rem !important;
-  text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.15);
-  border: 1px solid #ddd!important;
-  box-shadow: none!important;
-}
-.card-body {
-  justify-content: flex-start!important;
-  gap: 1rem!important;
-}
+
 .card-buttons {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important; 
-  gap: 0.75rem !important;
-  margin-top: 1rem !important;
-  justify-content: flex-start; 
-  overflow-x: auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: flex-start;
+    overflow-x: auto;
 }
-.card-buttons.btn {
-  min-width: 120px!important;
-  margin: 0!important;
-  flex-grow: 1;
-  white-space: nowrap;
-  text-align: center;
+
+.card-buttons .btn {
+    flex: 1 1 140px;
+    min-width: 120px;
+    white-space: normal;
+    text-align: center;
+    margin: 0;
 }
+
+.quick-actions.btn {
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    padding: 20px 15px;
+    color: #333;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    min-height: 80px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-wrap: wrap;
+}
+
+.quick-actions.btn > * {
+    flex: 1 1 150px;
+    margin: 0.25rem;
+    white-space: normal;
+    text-align: center;
+}
+
+.quick-actions.btn:hover {
+    background: #f8f9fa;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    transform: translateY(-5px);
+    border-color: transparent;
+}
+
 /* Timer Styles */
 .timer-display {
     font-size: 4rem;
@@ -173,13 +214,6 @@ body {
     outline-offset: 2px;
 }
 
-.card-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: auto;
-}
-
 /* Stats Cards */
 .stats-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -191,6 +225,19 @@ body {
 .spinner-border-sm {
     width: 1rem;
     height: 1rem;
+}
+
+.spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 0.25em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner-border 0.75s linear infinite;
+}
+
+@keyframes spinner-border {
+    to { transform: rotate(360deg); }
 }
 
 /* Toast Notifications */
@@ -272,30 +319,6 @@ body {
     font-size: 4rem;
 }
 
-/* Quick Action Buttons */
-.quick-actions.btn {
-    background: white;
-    border: 1px solid #ccc;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    border-radius: 10px;
-    padding: 20px 15px;
-    color: #333 !important;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    min-height: 80px;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.quick-actions.btn:hover {
-    background: #f8f9fa;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    transform: translateY(-5px);
-    border-color: transparent;
-}
-
 /* Outline Button Hovers */
 .btn-outline-primary:hover {
     background-color: #0d6efd;
@@ -311,17 +334,3 @@ body {
     background-color: #0dcaf0;
     color: white !important;
 }
-
-.spinner-border {
-    width: 1.5rem;
-    height: 1.5rem;
-    border: 0.25em solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    animation: spinner-border 0.75s linear infinite;
-}
-@keyframes spinner-border {
-    to { transform: rotate(360deg); }
-}
-
-
