@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     {% block title %}Themes and Avatars{% endblock %}
@@ -64,19 +25,24 @@
     <h3>Available Themes</h3>
     <div class="row">
         {% for theme in themes %}
+            {% set purchased = theme.name in purchased_themes or theme.name in ['light', 'dark', 'retro', 'neon', 'anime'] %}
             <div class="col-md-4 theme-card">
                 <h4>{{ theme.display_name }}</h4>
                 <p>{{ theme.description }}</p>
-                <img src="{{ theme.preview_image }}" alt="{{ theme.display_name }} preview" class="theme-preview">
+                <img src="{{ theme.preview_image|default('#') }}" alt="{{ theme.display_name }} preview" class="theme-preview">
                 <ul>
                     {% for feature in theme.features %}
                         <li>{{ feature }}</li>
                     {% endfor %}
                 </ul>
-                <form action="{{ url_for('themes.set_theme') }}" method="POST">
-                    <input type="hidden" name="theme" value="{{ theme.name }}">
-                    <button type="submit" class="btn btn-primary">Apply Theme</button>
-                </form>
+                {% if purchased %}
+                    <form action="{{ url_for('themes.set_theme') }}" method="POST">
+                        <input type="hidden" name="theme" value="{{ theme.name }}">
+                        <button type="submit" class="btn btn-primary">Apply Theme</button>
+                    </form>
+                {% else %}
+                    <span class="text-muted">(Purchase Required)</span>
+                {% endif %}
             </div>
         {% endfor %}
     </div>
@@ -102,7 +68,7 @@
         {% endfor %}
     </div>
     
-    <a href="{{ url_for('themes.customize') }}" class="btn btn-info mt-3">Customize More Settings</a>
+    <a href="{{ url_for('themes.customize') }}" class="btn btn-info mt-3">Advanced Customization</a>
     <a href="{{ url_for('auth.profile') }}" class="btn btn-secondary mt-3">Back to Profile</a>
     {% endblock %}
     {% block scripts %}
