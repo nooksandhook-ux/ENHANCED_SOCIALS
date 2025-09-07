@@ -9,6 +9,7 @@
     <div id="chat-box" class="card mb-2" style="height:300px;overflow-y:auto;"></div>
     <form id="chat-form" autocomplete="off">
       <input id="chat-input" type="text" class="form-control mb-2" placeholder="Type a message...">
+      <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
       <button class="btn btn-primary">Send</button>
     </form>
   </div>
@@ -18,14 +19,14 @@
 <script>
 const socket = io();
 socket.on('connect', () => {
-  socket.emit('join_club', { club_id: '{{ club_id }}' });
+  socket.emit('join_club', { club_id: '{{ club_id }}', user_id: '{{ current_user.id }}', username: '{{ current_user.username }}' });
 });
 socket.on('chat_message', (data) => {
   const chatBox = document.getElementById('chat-box');
   const message = document.createElement('div');
   message.className = 'p-2';
   message.innerHTML = `
-    <p>${data.message} <small class="text-muted">by ${data.user_id}</small></p>
+    <p>${data.message} <small class="text-muted">by ${data.username}</small></p>
     {% if is_admin %}
     <button class="btn btn-danger btn-sm" onclick="deleteMessage('${data.message_id}')">Delete</button>
     {% endif %}
@@ -44,7 +45,7 @@ function loadMessages() {
           const message = document.createElement('div');
           message.className = 'p-2';
           message.innerHTML = `
-            <p>${msg.message} <small class="text-muted">by ${msg.user_id}</small></p>
+            <p>${msg.message} <small class="text-muted">by ${msg.username}</small></p>
             {% if is_admin %}
             <button class="btn btn-danger btn-sm" onclick="deleteMessage('${msg._id}')">Delete</button>
             {% endif %}
@@ -58,7 +59,10 @@ function loadMessages() {
 }
 function deleteMessage(messageId) {
   if (confirm('Are you sure you want to delete this message?')) {
-    fetch('{{ url_for("nooks_club.api_delete_club_message", club_id=club_id, message_id="") }}' + messageId, { method: 'DELETE' })
+    fetch('{{ url_for("nooks_club.api_delete_club_message", club_id=club_id, message_id="") }}' + messageId, { 
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
       .then(response => response.json())
       .then(data => {
         if (data.message) {
@@ -74,16 +78,27 @@ function deleteMessage(messageId) {
 document.getElementById('chat-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const message = document.getElementById('chat-input').value;
+  const csrfToken = document.getElementById('csrf_token').value;
   if (message.trim()) {
     fetch('{{ url_for("nooks_club.api_send_club_chat", club_id=club_id) }}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
       body: JSON.stringify({ message })
     })
       .then(response => response.json())
       .then(data => {
         if (data.message_id) {
           document.getElementById('chat-input').value = '';
+          socket.emit('chat_message', { 
+            club_id: '{{ club_id }}', 
+            message: message, 
+            user_id: '{{ current_user.id }}', 
+            username: '{{ current_user.username }}',
+            message_id: data.message_id 
+          });
         } else {
           alert(data.error || 'Error sending message');
         }
