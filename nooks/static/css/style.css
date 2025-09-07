@@ -45,7 +45,26 @@ body {
   border: 1px solid #ddd!important;
   box-shadow: none!important;
 }
-
+.card-body {
+  justify-content: flex-start!important;
+  gap: 1rem!important;
+}
+.card-buttons {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important; 
+  gap: 0.75rem !important;
+  margin-top: 1rem !important;
+  justify-content: flex-start; 
+  overflow-x: auto;
+}
+.card-buttons.btn {
+  min-width: 120px!important;
+  margin: 0!important;
+  flex-grow: 1;
+  white-space: nowrap;
+  text-align: center;
+}
 /* Timer Styles */
 .timer-display {
     font-size: 4rem;
@@ -304,4 +323,5 @@ body {
 @keyframes spinner-border {
     to { transform: rotate(360deg); }
 }
+
 
