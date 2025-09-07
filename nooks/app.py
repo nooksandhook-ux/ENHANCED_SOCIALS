@@ -114,7 +114,7 @@ def create_app():
             logger.info("Unauthenticated user, redirecting to landing page")
             return redirect(url_for('general.landing'))
         logger.info(f"Authenticated user {current_user.get_id()} accessing home page")
-        return render_template('general.home')
+        return render_template('general/home.html')
     
     # Dashboard route
     @app.route('/dashboard')
@@ -180,6 +180,7 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
 
 
