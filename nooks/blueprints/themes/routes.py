@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime
+import requests  # For DiceBear API calls
+import urllib.parse  # For URL encoding
 
 themes_bp = Blueprint('themes', __name__, template_folder='templates')
 
@@ -11,14 +13,19 @@ def index():
     user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
-    current_theme = user.get('preferences', {}).get('theme', 'light')
+    preferences = user.get('preferences', {})
+    current_theme = preferences.get('theme', 'light')
+    current_avatar = preferences.get('avatar', {'style': 'avataaars', 'options': {}})
     
-    # Available themes with their configurations
+    # Available themes and avatars
     available_themes = get_available_themes()
+    available_avatars = get_available_avatars()
     
     return render_template('themes/index.html',
                          themes=available_themes,
-                         current_theme=current_theme)
+                         current_theme=current_theme,
+                         avatars=available_avatars,
+                         current_avatar=current_avatar)
 
 @themes_bp.route('/set_theme', methods=['POST'])
 @login_required
@@ -111,6 +118,100 @@ def set_timer_theme():
     flash(f'Timer theme changed to {timer_theme.title()}!', 'success')
     return redirect(url_for('themes.timer_themes'))
 
+@themes_bp.route('/avatars')
+@login_required
+def avatars():
+    user_id = ObjectId(current_user.id)
+    user = current_app.mongo.db.users.find_one({'_id': user_id})
+    
+    preferences = user.get('preferences', {})
+    current_avatar = preferences.get('avatar', {'style': 'avataaars', 'options': {}})
+    
+    # Get available avatar styles
+    available_avatars = get_available_avatars()
+    
+    # Get user's purchased avatar styles from rewards
+    purchased_items = current_app.mongo.db.user_purchases.find({
+        'user_id': user_id,
+        'type': 'avatar_style',
+        'is_active': True
+    })
+    purchased_styles = [item['item_id'] for item in purchased_items]
+    
+    return render_template('themes/avatars.html',
+                         avatars=available_avatars,
+                         current_avatar=current_avatar,
+                         purchased_styles=purchased_styles)
+
+@themes_bp.route('/set_avatar', methods=['POST'])
+@login_required
+def set_avatar():
+    user_id = ObjectId(current_user.id)
+    avatar_style = request.form['avatar_style']
+    
+    # Validate avatar style
+    available_avatars = get_available_avatars()
+    available_styles = [avatar['style'] for avatar in available_avatars]
+    purchased_styles = [item['item_id'] for item in current_app.mongo.db.user_purchases.find({
+        'user_id': user_id,
+        'type': 'avatar_style',
+        'is_active': True
+    })]
+    
+    # Check if user has access to the style (free or purchased)
+    if avatar_style not in available_styles:
+        flash('Invalid avatar style selected', 'error')
+        return redirect(url_for('themes.avatars'))
+    
+    if avatar_style not in purchased_styles and avatar_style not in get_free_avatar_styles():
+        flash('This avatar style requires purchase', 'error')
+        return redirect(url_for('themes.avatars'))
+    
+    # Update user preferences
+    current_app.mongo.db.users.update_one(
+        {'_id': user_id},
+        {'$set': {'preferences.avatar.style': avatar_style}}
+    )
+    
+    flash(f'Avatar style changed to {avatar_style.title()}!', 'success')
+    return redirect(url_for('themes.avatars'))
+
+@themes_bp.route('/customize_avatar', methods=['GET', 'POST'])
+@login_required
+def customize_avatar():
+    user_id = ObjectId(current_user.id)
+    user = current_app.mongo.db.users.find_one({'_id': user_id})
+    
+    preferences = user.get('preferences', {})
+    current_avatar = preferences.get('avatar', {'style': 'avataaars', 'options': {}})
+    
+    if request.method == 'POST':
+        # Get customization options
+        avatar_options = {
+            'hair': request.form.getlist('hair[]'),  # Multiple hair options
+            'backgroundColor': request.form.getlist('backgroundColor[]'),  # Multiple colors
+            'flip': request.form.get('flip') == 'true'
+        }
+        
+        # Validate options
+        avatar_options = validate_avatar_options(avatar_options, current_avatar['style'])
+        
+        # Update user preferences
+        current_app.mongo.db.users.update_one(
+            {'_id': user_id},
+            {'$set': {'preferences.avatar.options': avatar_options}}
+        )
+        
+        flash('Avatar customization saved successfully!', 'success')
+        return redirect(url_for('themes.avatars'))
+    
+    # Get available customization options for the current style
+    customization_options = get_avatar_customization_options(current_avatar['style'])
+    
+    return render_template('themes/customize_avatar.html',
+                         current_avatar=current_avatar,
+                         customization_options=customization_options)
+
 @themes_bp.route('/api/theme_preview/<theme_name>')
 @login_required
 def api_theme_preview(theme_name):
@@ -123,10 +224,36 @@ def api_theme_preview(theme_name):
     
     return jsonify(theme)
 
+@themes_bp.route('/api/avatar_preview/<style>')
+@login_required
+def api_avatar_preview(style):
+    """Get avatar preview URL using DiceBear API"""
+    user_id = ObjectId(current_user.id)
+    user = current_app.mongo.db.users.find_one({'_id': user_id})
+    preferences = user.get('preferences', {})
+    avatar_options = preferences.get('avatar', {}).get('options', {})
+    
+    # Validate style
+    available_avatars = get_available_avatars()
+    if style not in [avatar['style'] for avatar in available_avatars]:
+        return jsonify({'error': 'Invalid avatar style'}), 404
+    
+    # Generate DiceBear URL
+    seed = str(user_id)  # Deterministic based on user_id
+    base_url = f"https://api.dicebear.com/9.x/{style}/svg"
+    params = {'seed': seed}
+    params.update(avatar_options)
+    
+    # Encode query parameters
+    query_string = urllib.parse.urlencode(params, doseq=True)
+    avatar_url = f"{base_url}?{query_string}"
+    
+    return jsonify({'avatar_url': avatar_url})
+
 @themes_bp.route('/export_theme')
 @login_required
 def export_theme():
-    """Export user's current theme settings"""
+    """Export user's current theme and avatar settings"""
     user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
@@ -143,7 +270,7 @@ def export_theme():
 @themes_bp.route('/import_theme', methods=['POST'])
 @login_required
 def import_theme():
-    """Import theme settings"""
+    """Import theme and avatar settings"""
     user_id = ObjectId(current_user.id)
     
     try:
@@ -159,7 +286,7 @@ def import_theme():
                 {'$set': {'preferences': valid_preferences}}
             )
             
-            flash('Theme imported successfully!', 'success')
+            flash('Theme and avatar settings imported successfully!', 'success')
         else:
             flash('Invalid theme data', 'error')
     
@@ -378,10 +505,82 @@ def get_timer_themes():
         }
     ]
 
+def get_available_avatars():
+    """Get available avatar styles from DiceBear"""
+    return [
+        {
+            'style': 'avataaars',
+            'display_name': 'Avataaars',
+            'description': 'Cartoon-style avatars with various customization options',
+            'free': True
+        },
+        {
+            'style': 'pixel-art',
+            'display_name': 'Pixel Art',
+            'description': 'Retro pixel art avatars with a nostalgic feel',
+            'free': True
+        },
+        {
+            'style': 'lorelei',
+            'display_name': 'Lorelei',
+            'description': 'Stylized character avatars with modern design',
+            'free': False
+        },
+        {
+            'style': 'bottts',
+            'display_name': 'Bottts',
+            'description': 'Abstract robot avatars with unique patterns',
+            'free': False
+        },
+        {
+            'style': 'adventurer',
+            'display_name': 'Adventurer',
+            'description': 'Fantasy-themed avatars for adventurous users',
+            'free': False
+        }
+    ]
+
+def get_free_avatar_styles():
+    """Get list of free avatar styles"""
+    return [avatar['style'] for avatar in get_available_avatars() if avatar['free']]
+
+def get_avatar_customization_options(style):
+    """Get customization options for a specific avatar style"""
+    # Simplified options; extend based on DiceBear documentation
+    options = {
+        'avataaars': {
+            'hair': ['short01', 'short02', 'long01', 'long02', 'none'],
+            'backgroundColor': ['#ffffff', '#f0f0f0', '#d3d3d3', '#add8e6', '#90ee90'],
+            'flip': [True, False]
+        },
+        'pixel-art': {
+            'hair': ['short01', 'short02', 'long01', 'long02'],
+            'backgroundColor': ['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff'],
+            'flip': [True, False]
+        },
+        'lorelei': {
+            'hair': ['style01', 'style02', 'style03'],
+            'backgroundColor': ['#ffffff', '#f0f0f0', '#d3d3d3'],
+            'flip': [True, False]
+        },
+        'bottts': {
+            'colors': ['red', 'blue', 'green'],
+            'backgroundColor': ['#ffffff', '#000000'],
+            'flip': [True, False]
+        },
+        'adventurer': {
+            'hair': ['style01', 'style02', 'style03'],
+            'backgroundColor': ['#ffffff', '#f0f0f0', '#d3d3d3'],
+            'flip': [True, False]
+        }
+    }
+    return options.get(style, {})
+
 def validate_preferences(preferences):
-    """Validate and sanitize user preferences"""
+    """Validate and sanitize user preferences, including avatar"""
     valid_themes = [theme['name'] for theme in get_available_themes()]
     valid_timer_themes = [theme['name'] for theme in get_timer_themes()]
+    valid_avatar_styles = [avatar['style'] for avatar in get_available_avatars()]
     
     validated = {}
     
@@ -396,6 +595,19 @@ def validate_preferences(preferences):
         validated['timer_theme'] = preferences['timer_theme']
     else:
         validated['timer_theme'] = 'default'
+    
+    # Avatar validation
+    if 'avatar' in preferences:
+        avatar = preferences['avatar']
+        validated_avatar = {}
+        if 'style' in avatar and avatar['style'] in valid_avatar_styles:
+            validated_avatar['style'] = avatar['style']
+        else:
+            validated_avatar['style'] = 'avataaars'
+        validated_avatar['options'] = validate_avatar_options(avatar.get('options', {}), validated_avatar['style'])
+        validated['avatar'] = validated_avatar
+    else:
+        validated['avatar'] = {'style': 'avataaars', 'options': {}}
     
     # Boolean preferences
     boolean_prefs = ['timer_sound', 'notifications', 'animations', 'compact_mode']
@@ -412,5 +624,34 @@ def validate_preferences(preferences):
         validated['dashboard_layout'] = preferences['dashboard_layout']
     else:
         validated['dashboard_layout'] = 'default'
+    
+    return validated
+
+def validate_avatar_options(options, style):
+    """Validate and sanitize avatar customization options"""
+    valid_options = get_avatar_customization_options(style)
+    validated = {}
+    
+    # Validate hair
+    if 'hair' in options and 'hair' in valid_options:
+        validated['hair'] = [h for h in options['hair'] if h in valid_options['hair']]
+        if not validated['hair']:
+            validated['hair'] = [valid_options['hair'][0]]  # Default to first option
+    
+    # Validate backgroundColor
+    if 'backgroundColor' in options and 'backgroundColor' in valid_options:
+        validated['backgroundColor'] = [c for c in options['backgroundColor'] if c in valid_options['backgroundColor']]
+        if not validated['backgroundColor']:
+            validated['backgroundColor'] = [valid_options['backgroundColor'][0]]
+    
+    # Validate colors (for styles like bottts)
+    if 'colors' in options and 'colors' in valid_options:
+        validated['colors'] = [c for c in options['colors'] if c in valid_options['colors']]
+        if not validated['colors']:
+            validated['colors'] = [valid_options['colors'][0]]
+    
+    # Validate flip
+    if 'flip' in options and 'flip' in valid_options:
+        validated['flip'] = bool(options['flip'])
     
     return validated
