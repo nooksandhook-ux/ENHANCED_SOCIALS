@@ -105,7 +105,18 @@ footer {
     height: 100%;
 }
 
+/* Card Footer */
+.card-footer {
+    margin-top: auto; /* Pushes footer to bottom of card */
+    padding: 0.5rem 0; /* Adds padding to prevent overlap */
+    text-align: center;
+}
+
 /* Wrapper container for the cards, ensuring equal height and baseline alignment */
+.cards-container {
+    margin-bottom: 2rem; /* Adds spacing below cards to separate from Quick Actions */
+}
+
 .cards-container .row {
     display: flex;
     flex-wrap: wrap;
@@ -116,12 +127,12 @@ footer {
     height: 100%; /* Ensures cards stretch to fill the row */
 }
 
-/* Align all cards buttons at the bottom */
+/* Align all cards buttons above footer */
 .card-buttons {
     display: flex !important;
     flex-direction: column; /* Stack buttons vertically inside each card */
     gap: 0.5rem !important;
-    margin-top: auto !important; /* Pushes buttons to the bottom of card-body */
+    margin-top: 1rem !important; /* Ensures buttons are above footer */
 }
 
 .card-buttons .btn {
@@ -131,6 +142,11 @@ footer {
     text-align: center;
     margin: 0;
     box-sizing: border-box;
+}
+
+/* Quick Actions Section */
+.quick-actions-section {
+    margin-top: 3rem; /* Increased margin to ensure separation from cards */
 }
 
 .quick-actions.btn {
