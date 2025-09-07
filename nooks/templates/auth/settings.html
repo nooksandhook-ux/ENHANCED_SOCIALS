@@ -1,10 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-    {% block title %}Settings - Nook & Hook{% endblock %}
-</head>
-<body>
 {% extends "base.html" %}
+
+{% block title %}Settings - Nook & Hook{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -161,8 +157,7 @@
                         {% for error in change_password_form.current_password.errors %}
                             <div class="invalid-feedback d-block">{{ error }}</div>
                         {% endfor %}
-                    </div>
-                    
+                    </3>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="new_password" class="form-label">New Password</label>
@@ -172,7 +167,6 @@
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        
                         <div class="col-md-6 mb-3">
                             <label for="confirm_password" class="form-label">Confirm New Password</label>
                             {{ change_password_form.confirm_password(class="form-control", id="confirm_password") }}
@@ -182,7 +176,6 @@
                             {% endfor %}
                         </div>
                     </div>
-                    
                     <div class="d-grid">
                         {{ change_password_form.submit(class="btn btn-warning", id="password-submit", disabled=true) }}
                     </div>
@@ -382,5 +375,3 @@
     window.onload = () => debouncedUpdateAvatarOptions('{{ avatar_form.avatar_style.data }}');
 </script>
 {% endblock %}
-</body>
-</html>
