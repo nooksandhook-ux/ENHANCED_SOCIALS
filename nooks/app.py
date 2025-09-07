@@ -28,6 +28,9 @@ from blueprints.quotes.routes import quotes_bp
 from blueprints.nooks_club.routes import nooks_club_bp
 from blueprints.mini_modules.routes import mini_modules_bp
 
+# Import breadcrumb helper
+from utils.breadcrumbs import register_breadcrumbs
+
 # Configure logging
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -53,6 +56,9 @@ def create_app():
     
     # Initialize CSRF protection
     csrf = CSRFProtect(app)
+    
+    # Register breadcrumb helper
+    register_breadcrumbs(app)
     
     # User loader callback for Flask-Login
     @login_manager.user_loader
@@ -180,11 +186,3 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
-
-
-
-
-
-
-
