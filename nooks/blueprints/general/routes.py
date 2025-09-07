@@ -13,7 +13,7 @@ general_bp = Blueprint('general', __name__, template_folder='templates')
 def home():
     """Home page for authenticated users"""
     logger.info(f"Rendering home page for user_id: {current_user.get_id()}")
-    return render_template('home.html')
+    return render_template('general/home.html')
 
 @general_bp.route('/landing')
 def landing():
@@ -53,3 +53,4 @@ def fair_use():
     """Fair use policy page"""
     logger.info("Rendering fair use policy page")
     return render_template('general/fair_use.html')
+
