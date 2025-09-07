@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, current_app
+from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime, timedelta
-from utils.decorators import login_required
 from blueprints.rewards.services import RewardService
 
 api_bp = Blueprint('api', __name__)
@@ -9,7 +9,7 @@ api_bp = Blueprint('api', __name__)
 @api_bp.route('/user/stats')
 @login_required
 def user_stats():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Book stats
     books = list(current_app.mongo.db.books.find({'user_id': user_id}))
@@ -47,7 +47,7 @@ def user_stats():
 @api_bp.route('/reading/progress')
 @login_required
 def reading_progress():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get reading sessions for the last 30 days
     thirty_days_ago = datetime.now() - timedelta(days=30)
@@ -69,7 +69,7 @@ def reading_progress():
 @api_bp.route('/tasks/analytics')
 @login_required
 def task_analytics():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get tasks for the last 30 days
     thirty_days_ago = datetime.now() - timedelta(days=30)
@@ -103,7 +103,7 @@ def task_analytics():
 @api_bp.route('/rewards/recent')
 @login_required
 def recent_rewards():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     rewards = list(current_app.mongo.db.rewards.find({
         'user_id': user_id
@@ -135,7 +135,7 @@ def search_books():
 @api_bp.route('/dashboard/summary')
 @login_required
 def dashboard_summary():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Quick summary for dashboard widgets
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -162,7 +162,7 @@ def dashboard_summary():
 @api_bp.route('/timer/status')
 @login_required
 def timer_status():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     timer = current_app.mongo.db.active_timers.find_one({'user_id': user_id})
     
     if timer:
@@ -191,7 +191,7 @@ def timer_status():
 @api_bp.route('/achievements/progress')
 @login_required
 def achievements_progress():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get progress towards various achievements
     finished_books = current_app.mongo.db.books.count_documents({
@@ -244,7 +244,7 @@ def achievements_progress():
 @login_required
 def export_user_data():
     """Export user's data for backup or transfer"""
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get all user data
     user = current_app.mongo.db.users.find_one({'_id': user_id})
