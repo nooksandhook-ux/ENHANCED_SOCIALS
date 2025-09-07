@@ -9,17 +9,17 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>My Quotes</h2>
                 <div>
-                    <span class="badge badge-success fs-6 me-3">Balance: ₦{{ current_balance }}</span>
-                    <a href="{{ url_for('quotes.submit_quote') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Submit New Quote
+                    <span class="badge bg-nook fs-6 me-3">Balance: ₦{{ current_balance }}</span>
+                    <a href="{{ url_for('quotes.submit_quote') }}" class="btn btn-nook">
+                        <i class="bi bi-plus"></i> Submit New Quote
                     </a>
                 </div>
             </div>
 
             <!-- Statistics Cards -->
-            <div class="row mb-4">
+            <div class="row mb-4 cards-container">
                 <div class="col-md-3">
-                    <div class="card bg-warning text-white">
+                    <div class="card reading-streak-card overview-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
@@ -27,14 +27,14 @@
                                     <p class="mb-0">Pending</p>
                                 </div>
                                 <div class="align-self-center">
-                                    <i class="fas fa-clock fa-2x"></i>
+                                    <i class="bi bi-clock fa-2x"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card bg-success text-white">
+                    <div class="card nook-card overview-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
@@ -42,14 +42,14 @@
                                     <p class="mb-0">Verified</p>
                                 </div>
                                 <div class="align-self-center">
-                                    <i class="fas fa-check-circle fa-2x"></i>
+                                    <i class="bi bi-check-circle fa-2x"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card bg-danger text-white">
+                    <div class="card hook-card overview-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
@@ -57,14 +57,14 @@
                                     <p class="mb-0">Rejected</p>
                                 </div>
                                 <div class="align-self-center">
-                                    <i class="fas fa-times-circle fa-2x"></i>
+                                    <i class="bi bi-x-circle fa-2x"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card bg-info text-white">
+                    <div class="card stats-card overview-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
@@ -72,7 +72,7 @@
                                     <p class="mb-0">Total Earned</p>
                                 </div>
                                 <div class="align-self-center">
-                                    <i class="fas fa-money-bill-wave fa-2x"></i>
+                                    <i class="bi bi-currency-dollar fa-2x"></i>
                                 </div>
                             </div>
                         </div>
@@ -101,7 +101,7 @@
             </ul>
 
             <!-- Quotes List -->
-            <div class="card">
+            <div class="card recent-rewards-card">
                 <div class="card-body">
                     {% if quotes %}
                         <div class="table-responsive">
@@ -124,7 +124,7 @@
                                             <div class="d-flex align-items-center">
                                                 {% if quote.book.cover_url %}
                                                 <img src="{{ quote.book.cover_url }}" alt="Book cover" 
-                                                     class="me-2" style="width: 40px; height: 60px; object-fit: cover;">
+                                                     class="me-2 book-cover" style="width: 40px; height: 60px;">
                                                 {% endif %}
                                                 <div>
                                                     <strong>{{ quote.book.title }}</strong><br>
@@ -150,16 +150,16 @@
                                         <td>{{ quote.page_number }}</td>
                                         <td>
                                             {% if quote.status == 'pending' %}
-                                                <span class="badge bg-warning">Pending</span>
+                                                <span class="badge bg-warning text-dark">Pending</span>
                                             {% elif quote.status == 'verified' %}
-                                                <span class="badge bg-success">Verified</span>
+                                                <span class="badge bg-nook">Verified</span>
                                             {% elif quote.status == 'rejected' %}
                                                 <span class="badge bg-danger">Rejected</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             {% if quote.status == 'verified' %}
-                                                <span class="text-success">₦{{ quote.reward_amount }}</span>
+                                                <span class="text-nook">₦{{ quote.reward_amount }}</span>
                                             {% else %}
                                                 <span class="text-muted">₦{{ quote.reward_amount }}</span>
                                             {% endif %}
@@ -168,7 +168,7 @@
                                         <td>
                                             <button class="btn btn-sm btn-outline-primary" 
                                                     data-bs-toggle="modal" data-bs-target="#quoteModal{{ loop.index }}">
-                                                <i class="fas fa-eye"></i>
+                                                <i class="bi bi-eye"></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -204,7 +204,7 @@
                                                         <div class="col-md-4">
                                                             {% if quote.book.cover_url %}
                                                             <img src="{{ quote.book.cover_url }}" alt="Book cover" 
-                                                                 class="img-fluid">
+                                                                 class="img-fluid book-cover">
                                                             {% endif %}
                                                         </div>
                                                     </div>
@@ -234,10 +234,10 @@
                         {% endif %}
                     {% else %}
                         <div class="text-center py-5">
-                            <i class="fas fa-quote-left fa-3x text-muted mb-3"></i>
+                            <i class="bi bi-quote fa-3x text-muted mb-3"></i>
                             <h4>No quotes yet</h4>
                             <p class="text-muted">Start earning by submitting your first quote!</p>
-                            <a href="{{ url_for('quotes.submit_quote') }}" class="btn btn-primary">
+                            <a href="{{ url_for('quotes.submit_quote') }}" class="btn btn-nook">
                                 Submit Your First Quote
                             </a>
                         </div>
