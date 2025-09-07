@@ -1,7 +1,6 @@
 from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import UserMixin
 from datetime import datetime, timedelta
 from bson import ObjectId
 import os
@@ -41,7 +40,7 @@ class DatabaseManager:
     
     @staticmethod
     def initialize_database():
-        """Initialize database with all collections and indexes"""
+        """Initialize database with all collections, indexes, and migrations"""
         try:
             logger.info("Starting database initialization...")
             
@@ -49,8 +48,9 @@ class DatabaseManager:
             DatabaseManager._create_collections()
             DatabaseManager._create_indexes()
             
-            # Initialize default data
+            # Initialize default data and migrations
             DatabaseManager._create_default_admin()
+            DatabaseManager._migrate_user_avatars()  # New migration for avatar preferences
             DatabaseManager._initialize_default_data()
             
             logger.info("Database initialization completed successfully")
@@ -207,7 +207,15 @@ class DatabaseManager:
                     'privacy_level': 'private',
                     'default_book_status': 'to_read',
                     'reading_goal_type': 'books',
-                    'reading_goal_target': 12
+                    'reading_goal_target': 12,
+                    'avatar': {
+                        'style': 'avataaars',
+                        'options': {
+                            'hair': ['short01'],
+                            'backgroundColor': ['#ffffff'],
+                            'flip': False
+                        }
+                    }
                 },
                 'statistics': {
                     'books_read': 0,
@@ -232,6 +240,52 @@ class DatabaseManager:
             
         except Exception as e:
             logger.error(f"Error creating default admin: {str(e)}")
+    
+    @staticmethod
+    def _migrate_user_avatars():
+        """Migrate existing users to include default avatar preferences"""
+        try:
+            logger.info("Starting avatar preferences migration...")
+            users = current_app.mongo.db.users.find({'preferences.avatar': {'$exists': False}})
+            updated_count = 0
+
+            for user in users:
+                user_id = user['_id']
+                # Update user with default avatar preferences
+                result = current_app.mongo.db.users.update_one(
+                    {'_id': user_id},
+                    {
+                        '$set': {
+                            'preferences.avatar': {
+                                'style': 'avataaars',
+                                'options': {
+                                    'hair': ['short01'],
+                                    'backgroundColor': ['#ffffff'],
+                                    'flip': False
+                                }
+                            },
+                            'updated_at': datetime.utcnow()
+                        }
+                    }
+                )
+                
+                if result.modified_count > 0:
+                    updated_count += 1
+                    ActivityLogger.log_activity(
+                        user_id=user_id,
+                        action='avatar_migration',
+                        description='Added default avatar preferences during migration',
+                        metadata={
+                            'avatar_style': 'avataaars',
+                            'username': user.get('username', 'unknown')
+                        }
+                    )
+                    logger.info(f"Updated avatar preferences for user_id: {str(user_id)}")
+            
+            logger.info(f"Avatar migration completed: Updated {updated_count} users")
+            
+        except Exception as e:
+            logger.error(f"Error during avatar migration: {str(e)}")
     
     @staticmethod
     def _initialize_default_data():
@@ -458,7 +512,15 @@ class UserModel:
                     'privacy_level': 'public',
                     'default_book_status': 'to_read',
                     'reading_goal_type': 'books',
-                    'reading_goal_target': 12
+                    'reading_goal_target': 12,
+                    'avatar': {
+                        'style': 'avataaars',
+                        'options': {
+                            'hair': ['short01'],
+                            'backgroundColor': ['#ffffff'],
+                            'flip': False
+                        }
+                    }
                 },
                 'statistics': {
                     'books_read': 0,
@@ -928,7 +990,53 @@ USER_SCHEMA = {
     'updated_at': {'type': 'datetime', 'required': True},
     'last_login': {'type': 'datetime'},
     'total_points': {'type': 'integer', 'default': 0},
-    'level': {'type': 'integer', 'default': 1}
+    'level': {'type': 'integer', 'default': 1},
+    'profile': {
+        'type': 'dict',
+        'schema': {
+            'display_name': {'type': 'string'},
+            'bio': {'type': 'string'},
+            'avatar_url': {'type': 'string', 'nullable': True},
+            'timezone': {'type': 'string'},
+            'theme': {'type': 'string'}
+        }
+    },
+    'preferences': {
+        'type': 'dict',
+        'schema': {
+            'notifications_enabled': {'type': 'boolean'},
+            'email_notifications': {'type': 'boolean'},
+            'privacy_level': {'type': 'string'},
+            'default_book_status': {'type': 'string'},
+            'reading_goal_type': {'type': 'string'},
+            'reading_goal_target': {'type': 'integer'},
+            'avatar': {
+                'type': 'dict',
+                'schema': {
+                    'style': {'type': 'string'},
+                    'options': {
+                        'type': 'dict',
+                        'schema': {
+                            'hair': {'type': 'list', 'schema': {'type': 'string'}},
+                            'backgroundColor': {'type': 'list', 'schema': {'type': 'string'}},
+                            'flip': {'type': 'boolean'}
+                        }
+                    }
+                }
+            }
+        }
+    },
+    'statistics': {
+        'type': 'dict',
+        'schema': {
+            'books_read': {'type': 'integer'},
+            'pages_read': {'type': 'integer'},
+            'reading_streak': {'type': 'integer'},
+            'tasks_completed': {'type': 'integer'},
+            'productivity_streak': {'type': 'integer'},
+            'total_focus_time': {'type': 'integer'}
+        }
+    }
 }
 
 BOOK_SCHEMA = {
@@ -1406,4 +1514,3 @@ class GoogleBooksAPI:
         except Exception as e:
             logger.error(f"Error getting book details: {str(e)}")
             return None
-
