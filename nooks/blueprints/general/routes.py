@@ -1,6 +1,5 @@
-from flask import Blueprint, render_template
-from flask_login import current_user
-from utils.decorators import login_required
+from flask import Blueprint, render_template, redirect, url_for
+from flask_login import current_user, login_required
 import logging
 
 # Configure logging
@@ -19,6 +18,9 @@ def home():
 @general_bp.route('/landing')
 def landing():
     """Landing page for new visitors"""
+    if current_user.is_authenticated:
+        logger.info(f"Authenticated user {current_user.get_id()} redirected from landing to home")
+        return redirect(url_for('general.home'))
     logger.info("Rendering landing page")
     return render_template('general/landingpage.html')
 
@@ -46,7 +48,7 @@ def terms():
     logger.info("Rendering terms of service page")
     return render_template('general/terms.html')
 
-@general_bp.route('/fair-use')
+@general_bp.route('/fair_use')
 def fair_use():
     """Fair use policy page"""
     logger.info("Rendering fair use policy page")
