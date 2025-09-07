@@ -104,6 +104,8 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(quotes_bp, url_prefix='/quotes')
     app.register_blueprint(nooks_club_bp, url_prefix='/nooks_club')
+    with app.app_context():
+        logger.info("Registered endpoints: %s", [rule.endpoint for rule in app.url_map.iter_rules()])
     app.register_blueprint(mini_modules_bp, url_prefix='/mini_modules')
     
     @app.route('/')
@@ -178,6 +180,7 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
 
 
