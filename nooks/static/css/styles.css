@@ -3,6 +3,7 @@
     --nook-color: #198754;
     --hook-color: #0dcaf0;
     --primary-color: #0d6efd;
+    --streak-color: #ffc107;
     --high-contrast-bg-light: #ffffff;
     --high-contrast-text-light: #000000;
     --high-contrast-bg-dark: #121212;
@@ -51,21 +52,30 @@ footer {
     transform: translateY(-2px);
 }
 
-/* Ensure all .card have consistent colored border */
-.card:nth-child(1) {
+/* Ensure specific cards have consistent colored border and background */
+.nook-card {
     border: 3px solid var(--nook-color) !important; /* green */
+    background-color: var(--nook-color) !important;
 }
 
-.card:nth-child(2) {
+.hook-card {
     border: 3px solid var(--hook-color) !important; /* cyan */
+    background-color: var(--hook-color) !important;
 }
 
-.card:nth-child(3) {
-    border: 3px solid var(--primary-color) !important; /* blue for Nooks Club */
+.streak-card {
+    border: 3px solid var(--streak-color) !important; /* yellow */
+    background-color: var(--streak-color) !important;
 }
 
-.card:nth-child(4) {
-    border: 3px solid #ffc107 !important; /* yellow for Mini Modules */
+.task-card {
+    border: 3px solid var(--primary-color) !important; /* blue */
+    background-color: var(--primary-color) !important;
+}
+
+/* Smaller min-height for overview cards */
+.nook-card, .hook-card, .streak-card, .task-card {
+    min-height: 200px;
 }
 
 .card-body {
@@ -168,6 +178,9 @@ footer {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .cards-container {
+        display: block;
+    }
     .timer-display {
         font-size: 2.5rem;
     }
