@@ -3,11 +3,33 @@
 {% if current_user.is_authenticated %}
 <div class="container">
   <h2>Nooks Clubs</h2>
-  <a href="{{ url_for('nooks_club.create_club') }}" class="btn btn-primary">Create Club</a>
-  <div class="card-list">
-    <!-- Loop clubs here -->
-    <div class="card">Club Example</div>
+  <div class="mb-3">
+    <a href="{{ url_for('nooks_club.create_club') }}" class="btn btn-primary">Create Club</a>
   </div>
+  <div class="card-deck mb-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">All Clubs</h5>
+        <p class="card-text">Browse all available clubs</p>
+        <button class="btn btn-outline-primary" onclick="loadClubs('all')">View</button>
+      </div>
+    </div>
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">My Clubs</h5>
+        <p class="card-text">Clubs you have joined</p>
+        <a href="{{ url_for('nooks_club.my_clubs') }}" class="btn btn-outline-primary">View</a>
+      </div>
+    </div>
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Created Clubs</h5>
+        <p class="card-text">Clubs you created</p>
+        <a href="{{ url_for('nooks_club.created_clubs') }}" class="btn btn-outline-primary">View</a>
+      </div>
+    </div>
+  </div>
+  <div id="club-list" class="card-list"></div>
 </div>
 {% else %}
 <div class="container text-center">
@@ -17,4 +39,47 @@
   <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg">Register</a>
 </div>
 {% endif %}
+{% block extra_scripts %}
+{% if current_user.is_authenticated %}
+<script>
+function loadClubs(type) {
+  let url = type === 'all' ? '{{ url_for("nooks_club.api_get_clubs") }}' : 
+            type === 'my' ? '{{ url_for("nooks_club.api_my_clubs") }}' : 
+            '{{ url_for("nooks_club.api_created_clubs") }}';
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      const clubList = document.getElementById('club-list');
+      clubList.innerHTML = '';
+      if (data.clubs) {
+        data.clubs.forEach(club => {
+          const isMember = club.members.includes('{{ current_user.id }}');
+          const isAdmin = club.is_admin;
+          const card = document.createElement('div');
+          card.className = 'card mb-3';
+          card.innerHTML = `
+            <div class="card-body">
+              <h5 class="card-title">${club.name}</h5>
+              <p class="card-text">${club.description || 'No description'}</p>
+              <p class="card-text"><small class="text-muted">Topic: ${club.topic || 'None'}</small></p>
+              <a href="{{ url_for('nooks_club.view_club', club_id='') }}${club._id}" class="btn btn-info">View</a>
+              ${isMember ? '' : `<form action="{{ url_for('nooks_club.join_club', club_id='') }}${club._id}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-success">Join</button>
+              </form>`}
+              ${isAdmin ? `<a href="{{ url_for('nooks_club.view_club', club_id='') }}${club._id}#manage" class="btn btn-warning">Manage</a>` : ''}
+            </div>
+          `;
+          clubList.appendChild(card);
+        });
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching clubs:', error);
+      document.getElementById('club-list').innerHTML = '<p class="text-danger">Error loading clubs.</p>';
+    });
+}
+document.addEventListener('DOMContentLoaded', () => loadClubs('all'));
+</script>
+{% endif %}
+{% endblock %}
 {% endblock %}
