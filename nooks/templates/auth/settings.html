@@ -17,9 +17,9 @@
                     <div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
                 {% endfor %}
 
-                <!-- Preferences Form -->
+                <!-- General Settings Form -->
                 <h5 class="mb-3">General Settings</h5>
-                <form method="POST">
+                <form id="general-settings-form" method="POST" action="{{ url_for('auth.update_general_settings') }}">
                     {{ form.csrf_token }}
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -57,10 +57,40 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                {{ form.animations(class="form-check-input") }}
+                                <label class="form-check-label" for="animations">
+                                    Enable animations
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                {{ form.compact_mode(class="form-check-input") }}
+                                <label class="form-check-label" for="compact_mode">
+                                    Compact mode
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="timer_theme" class="form-label">Timer Theme</label>
+                            {{ form.timer_theme(class="form-select") }}
+                            {% for error in form.timer_theme.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="dashboard_layout" class="form-label">Dashboard Layout</label>
+                            {{ form.dashboard_layout(class="form-select") }}
+                            {% for error in form.dashboard_layout.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
                     </div>
                     
                     <div class="d-grid">
-                        {{ form.submit(class="btn btn-primary") }}
+                        {{ form.submit(class="btn btn-primary", id="general-submit", disabled=true) }}
                     </div>
                 </form>
                 
@@ -68,19 +98,19 @@
                 
                 <!-- Avatar Customization Form -->
                 <h5 class="mb-3">Avatar Customization</h5>
-                <form method="POST">
+                <form id="avatar-form" method="POST" action="{{ url_for('auth.update_avatar_settings') }}">
                     {{ avatar_form.csrf_token }}
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="avatar_style" class="form-label">Avatar Style</label>
-                            {{ avatar_form.avatar_style(class="form-select", onchange="updateAvatarPreview(this.value)") }}
+                            {{ avatar_form.avatar_style(class="form-select", id="avatar_style") }}
                             {% for error in avatar_form.avatar_style.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="hair" class="form-label">Hair Style</label>
-                            {{ avatar_form.hair(class="form-select") }}
+                            {{ avatar_form.hair(class="form-select", id="hair", multiple=true) }}
                             {% for error in avatar_form.hair.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
@@ -89,14 +119,14 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="background_color" class="form-label">Background Color</label>
-                            {{ avatar_form.background_color(class="form-select") }}
+                            {{ avatar_form.background_color(class="form-select", id="background_color", multiple=true) }}
                             {% for error in avatar_form.background_color.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
                         </div>
                         <div class="col-md-6 mb-3">
                             <div class="form-check mt-4">
-                                {{ avatar_form.flip(class="form-check-input") }}
+                                {{ avatar_form.flip(class="form-check-input", id="flip") }}
                                 <label class="form-check-label" for="flip">
                                     Flip Avatar
                                 </label>
@@ -107,7 +137,7 @@
                         <img id="avatar-preview" src="" alt="Avatar Preview" class="border rounded" style="width: 100px; height: 100px;">
                     </div>
                     <div class="d-grid">
-                        {{ avatar_form.submit(class="btn btn-primary") }}
+                        {{ avatar_form.submit(class="btn btn-primary", id="avatar-submit", disabled=true) }}
                     </div>
                 </form>
                 
@@ -115,11 +145,11 @@
                 
                 <!-- Change Password Form -->
                 <h5 class="mb-3">Change Password</h5>
-                <form method="POST" action="{{ url_for('auth.change_password') }}">
+                <form id="password-form" method="POST" action="{{ url_for('auth.change_password') }}">
                     {{ change_password_form.csrf_token }}
                     <div class="mb-3">
                         <label for="current_password" class="form-label">Current Password</label>
-                        {{ change_password_form.current_password(class="form-control") }}
+                        {{ change_password_form.current_password(class="form-control", id="current_password") }}
                         {% for error in change_password_form.current_password.errors %}
                             <div class="invalid-feedback d-block">{{ error }}</div>
                         {% endfor %}
@@ -128,7 +158,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="new_password" class="form-label">New Password</label>
-                            {{ change_password_form.new_password(class="form-control") }}
+                            {{ change_password_form.new_password(class="form-control", id="new_password") }}
                             {% for error in change_password_form.new_password.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
@@ -136,16 +166,16 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="confirm_password" class="form-label">Confirm New Password</label>
-                            {{ change_password_form.confirm_password(class="form-control") }}
+                            {{ change_password_form.confirm_password(class="form-control", id="confirm_password") }}
                             {% for error in change_password_form.confirm_password.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-key me-2"></i>Change Password
-                    </button>
+                    <div class="d-grid">
+                        {{ change_password_form.submit(class="btn btn-warning", id="password-submit", disabled=true) }}
+                    </div>
                 </form>
             </div>
         </div>
@@ -153,15 +183,71 @@
 </div>
 
 <script>
+    function updateAvatarOptions(style) {
+        fetch(`/themes/api/avatar_customization_options/${style}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Error fetching avatar options:', data.error);
+                    return;
+                }
+                const hairSelect = document.querySelector('#hair');
+                const bgSelect = document.querySelector('#background_color');
+                hairSelect.innerHTML = data.hair.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+                bgSelect.innerHTML = data.backgroundColor.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+                updateAvatarPreview(style);
+            })
+            .catch(error => console.error('Error fetching avatar options:', error));
+    }
+
     function updateAvatarPreview(style) {
         fetch(`/themes/api/avatar_preview/${style}`)
             .then(response => response.json())
             .then(data => {
-                document.getElementById('avatar-preview').src = data.preview_url;
+                if (data.avatar_url) {
+                    document.getElementById('avatar-preview').src = data.avatar_url;
+                }
             })
             .catch(error => console.error('Error fetching avatar preview:', error));
     }
-    // Initialize preview on page load
-    window.onload = () => updateAvatarPreview('{{ avatar_form.avatar_style.data }}');
+
+    // Client-side validation to enable/disable submit buttons
+    function monitorFormChanges(formId, submitBtnId) {
+        const form = document.getElementById(formId);
+        const submitBtn = document.getElementById(submitBtnId);
+        const inputs = form.querySelectorAll('input, select');
+        let hasChanges = false;
+
+        inputs.forEach(input => {
+            input.addEventListener('change', () => {
+                hasChanges = true;
+                submitBtn.disabled = false;
+            });
+        });
+
+        form.addEventListener('submit', (e) => {
+            if (!hasChanges) {
+                e.preventDefault();
+                alert('No changes detected. Please modify at least one field.');
+            } else if (formId === 'password-form') {
+                const currentPassword = document.getElementById('current_password').value;
+                const newPassword = document.getElementById('new_password').value;
+                const confirmPassword = document.getElementById('confirm_password').value;
+                if (!currentPassword || (!newPassword && confirmPassword) || (newPassword && !confirmPassword)) {
+                    e.preventDefault();
+                    alert('Please fill out all password fields or leave them all empty.');
+                }
+            }
+        });
+    }
+
+    // Initialize form monitoring
+    monitorFormChanges('general-settings-form', 'general-submit');
+    monitorFormChanges('avatar-form', 'avatar-submit');
+    monitorFormChanges('password-form', 'password-submit');
+
+    // Initialize avatar options and preview
+    document.querySelector('#avatar_style').addEventListener('change', (e) => updateAvatarOptions(e.target.value));
+    window.onload = () => updateAvatarOptions('{{ avatar_form.avatar_style.data }}');
 </script>
 {% endblock %}
