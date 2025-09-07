@@ -26,12 +26,12 @@
                 <p class="card-text text-muted mb-4">
                     Track your reading journey, discover new books, and build lasting reading habits.
                 </p>
-                <div class="card-buttons d-grid gap-2">
+                <div class="card-buttons">
                     <a href="{{ url_for('nook.index') }}" class="btn btn-success btn-lg">
-                        <i class="bi bi-book-half me-2"></i>Start Reading
+                        <span><i class="bi bi-book-half me-2"></i>Start Reading</span>
                     </a>
                     <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success">
-                        <i class="bi bi-plus-circle me-2"></i>Add a Book
+                        <span><i class="bi bi-plus-circle me-2"></i>Add a Book</span>
                     </a>
                 </div>
             </div>
@@ -56,12 +56,12 @@
                 <p class="card-text text-muted mb-4">
                     Boost productivity with focused work sessions and the Pomodoro technique.
                 </p>
-                <div class="card-buttons d-grid gap-2">
+                <div class="card-buttons">
                     <a href="{{ url_for('hook.timer') }}" class="btn btn-info btn-lg">
-                        <i class="bi bi-play-circle me-2"></i>Start Timer
+                        <span><i class="bi bi-play-circle me-2"></i>Start Timer</span>
                     </a>
                     <a href="{{ url_for('hook.history') }}" class="btn btn-outline-info">
-                        <i class="bi bi-clock-history me-2"></i>View Your History
+                        <span><i class="bi bi-clock-history me-2"></i>View Your History</span>
                     </a>
                 </div>
             </div>
@@ -86,9 +86,9 @@
                 <p class="card-text text-muted mb-4">
                     Join or create book clubs, discuss, and read together with the community.
                 </p>
-                <div class="card-buttons d-grid gap-2">
+                <div class="card-buttons">
                     <a href="{{ url_for('nooks_club.index') }}" class="btn btn-primary btn-lg">
-                        <i class="bi bi-people-fill me-2"></i>Join Readers
+                        <span><i class="bi bi-people-fill me-2"></i>Join Readers</span>
                     </a>
                 </div>
             </div>
@@ -113,9 +113,9 @@
                 <p class="card-text text-muted mb-4">
                     Flashcards, quizzes, and more to boost your learning and retention.
                 </p>
-                <div class="card-buttons d-grid gap-2">
+                <div class="card-buttons">
                     <a href="{{ url_for('mini_modules.index') }}" class="btn btn-warning btn-lg text-white">
-                        <i class="bi bi-lightning-charge me-2"></i>Test Brains
+                        <span><i class="bi bi-lightning-charge me-2"></i>Test Brains</span>
                     </a>
                 </div>
             </div>
@@ -136,17 +136,17 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary quick-actions w-100">
-                    <i class="bi bi-graph-up me-2"></i>View Dashboard
+                    <span><i class="bi bi-graph-up me-2"></i>View Dashboard</span>
                 </a>
             </div>
             <div class="col-md-4">
                 <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success quick-actions w-100">
-                    <i class="bi bi-plus-circle me-2"></i>Add New Book
+                    <span><i class="bi bi-plus-circle me-2"></i>Add New Book</span>
                 </a>
             </div>
             <div class="col-md-4">
                 <a href="{{ url_for('hook.timer') }}" class="btn btn-outline-info quick-actions w-100">
-                    <i class="bi bi-play-circle me-2"></i>Start Focus Session
+                    <span><i class="bi bi-play-circle me-2"></i>Start Focus Session</span>
                 </a>
             </div>
         </div>
@@ -162,8 +162,4 @@
     </div>
 </div>
 {% endif %}
-{% endblock %}
-
-{% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 {% endblock %}
