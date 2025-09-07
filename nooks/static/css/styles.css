@@ -51,21 +51,30 @@ footer {
     transform: translateY(-2px);
 }
 
-/* Ensure all .card have consistent colored border */
-.card:nth-child(1) {
+/* Overview Cards */
+.overview-card {
+    min-height: 200px;
+}
+
+.total-books-card {
+    border: 3px solid var(--primary-color) !important; /* blue */
+}
+
+.completed-tasks-card {
     border: 3px solid var(--nook-color) !important; /* green */
 }
 
-.card:nth-child(2) {
+.reading-streak-card {
+    border: 3px solid #ffc107 !important; /* yellow */
+}
+
+.task-streak-card {
     border: 3px solid var(--hook-color) !important; /* cyan */
 }
 
-.card:nth-child(3) {
-    border: 3px solid var(--primary-color) !important; /* blue for Nooks Club */
-}
-
-.card:nth-child(4) {
-    border: 3px solid #ffc107 !important; /* yellow for Mini Modules */
+/* Chart and Recent Activity Cards */
+.reading-progress-card, .task-analytics-card, .recent-books-card, .recent-rewards-card {
+    border: 3px solid var(--primary-color) !important; /* blue for consistency */
 }
 
 .card-body {
@@ -82,6 +91,13 @@ footer {
     justify-content: space-between;
     align-items: flex-end; /* aligns the bottom of cards so buttons align horizontally */
     gap: 1.5rem;
+}
+
+/* Responsive adjustment for cards-container */
+@media (max-width: 768px) {
+    .cards-container {
+        display: block; /* revert to Bootstrap grid on small screens */
+    }
 }
 
 /* Align all cards buttons horizontally on same line */
