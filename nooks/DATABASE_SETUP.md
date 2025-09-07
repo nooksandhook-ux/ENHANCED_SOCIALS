@@ -1,71 +1,67 @@
-# Database Setup and Models Documentation
+Database Setup and Models Documentation
+Overview
+The NOOKS application uses MongoDB as its primary database, with a comprehensive model system that supports user management, book tracking (including secure uploads), productivity tasks, social features (book clubs, chat, posts), learning tools (flashcards, quizzes), and a gamified quote-based reward system for Nigerian readers.
+Database Architecture
+Collections
 
-## Overview
+users: User accounts, profiles, preferences, and statistics.
+books: User's book library, including uploaded PDFs.
+reading_sessions: Reading activity tracking.
+completed_tasks: Productivity task records.
+rewards: Points earned from activities.
+user_badges: Achievement badges.
+user_goals: Personal goals and targets.
+themes: UI themes and customization options.
+user_preferences: User settings.
+notifications: System notifications.
+activity_log: User activity tracking (auto-expires after 30 days).
+quotes: User-submitted book quotes for reward verification.
+transactions: Financial transactions for quote rewards.
+user_purchases: Records of purchased items (e.g., avatar styles).
+clubs: Book club details and memberships.
+club_posts: Discussion posts within clubs.
+club_chat_messages: Real-time chat messages in clubs.
+flashcards: User-created flashcards for learning.
+quiz_questions: Quiz questions for daily challenges.
+quiz_answers: User quiz submissions and results.
+user_progress: Progress tracking for various modules.
 
-The Nook & Hook application uses MongoDB as its primary database with a comprehensive model system that handles user management, book tracking, productivity tasks, and gamification features.
+Key Features
 
-## Database Architecture
+Robust Initialization: Prevents duplicate data with existence checks.
+Automatic Indexing: Optimizes query performance with comprehensive indexes.
+Admin User Setup: Creates default admin from environment variables.
+Activity Logging: Tracks user actions with automatic cleanup (TTL index).
+Secure Book Uploads: Supports encrypted PDF uploads, accessible only to uploader and admins.
+Data Validation: Enforces schemas for all collections.
+Bulk Operations: Admin tools for managing users, quotes, and rewards.
+Quote Rewards: Supports ₦10 rewards per verified quote for Nigerian readers.
+Social & Learning: Integrates book clubs, real-time chat, flashcards, and quizzes.
 
-### Collections
-
-1. **users** - User accounts and profiles
-2. **books** - User's book library
-3. **reading_sessions** - Reading activity tracking
-4. **completed_tasks** - Productivity task records
-5. **rewards** - Points and reward system
-6. **user_badges** - Achievement badges
-7. **user_goals** - Personal goals and targets
-8. **themes** - UI themes and customization
-9. **user_preferences** - User settings
-10. **notifications** - System notifications
-11. **activity_log** - User activity tracking (auto-expires after 30 days)
-
-### Key Features
-
-- **Robust Initialization**: Checks for existing data before creating to prevent duplicates
-- **Automatic Indexing**: Creates optimal database indexes for performance
-- **Admin User Setup**: Automatically creates admin user from environment variables
-- **Activity Logging**: Comprehensive activity tracking with automatic cleanup
-- **Data Validation**: Schema validation and error handling
-- **Bulk Operations**: Admin tools for managing multiple users
-
-## Environment Variables
-
-Set these environment variables for proper database initialization:
-
-```bash
+Environment Variables
+Set these in your .env file for proper database initialization:
 # Required
-MONGO_URI=mongodb://localhost:27017/nook_hook_app
-
-# Admin User (will be created automatically)
+MONGO_URI=mongodb://localhost:27017/nooks_app
+SECRET_KEY=your-secret-key-here
+# Admin User (auto-created)
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
-ADMIN_EMAIL=admin@nookhook.com
-
+ADMIN_EMAIL=admin@nooks.com
 # Optional
-SECRET_KEY=your-secret-key-here
 GOOGLE_BOOKS_API_KEY=your-api-key-here
 PORT=5000
-```
 
-## Database Initialization
-
-### Method 1: Automatic (Recommended)
-The database initializes automatically when the Flask app starts:
-
-```python
+Database Initialization
+Method 1: Automatic (Recommended)
+The database initializes when the Flask app starts:
 python app.py
-```
 
-### Method 2: Manual Initialization
-Run the dedicated initialization script:
-
-```python
+Method 2: Manual Initialization
+Run the dedicated scripts:
 python init_db.py
-```
+python init_quotes_db.py
 
-### Method 3: Programmatic
-```python
+Method 3: Programmatic
 from models import DatabaseManager
 from flask import Flask
 from flask_pymongo import PyMongo
@@ -74,204 +70,310 @@ app = Flask(__name__)
 app.config['MONGO_URI'] = 'your-mongodb-uri'
 mongo = PyMongo(app)
 app.mongo = mongo
-
 with app.app_context():
     DatabaseManager.initialize_database()
-```
 
-## Model Classes
-
-### DatabaseManager
-Handles database initialization, collection creation, and indexing.
-
-```python
+Model Classes
+DatabaseManager
+Handles database initialization, collection creation, indexing, and migrations.
 from models import DatabaseManager
-
-# Initialize entire database
 DatabaseManager.initialize_database()
-```
 
-### UserModel
-User account management with authentication and profile handling.
-
-```python
+UserModel
+Manages user accounts, authentication, and profiles.
 from models import UserModel
-
-# Create new user
+# Create user
 user_id, error = UserModel.create_user(
     username="john_doe",
     email="john@example.com",
     password="secure_password",
     display_name="John Doe"
 )
-
-# Authenticate user
+# Authenticate
 user = UserModel.authenticate_user("john_doe", "secure_password")
-
-# Update user
+# Update
 UserModel.update_user(user_id, {"profile.bio": "Updated bio"})
-```
 
-### BookModel
-Book library management with reading progress tracking.
-
-```python
+BookModel
+Manages book library, including secure PDF uploads.
 from models import BookModel
-
-# Add new book
+# Add book (manual or uploaded)
 book_id = BookModel.create_book(
     user_id=user_id,
-    title="The Great Gatsby",
-    authors=["F. Scott Fitzgerald"],
-    genre="Classic Literature",
-    total_pages=180
+    title="Things Fall Apart",
+    authors=["Chinua Achebe"],
+    genre="Fiction",
+    total_pages=209,
+    pdf_path="/uploads/book.pdf",
+    is_encrypted=True
 )
-
-# Update reading status
+# Update status
 BookModel.update_book_status(book_id, "reading", user_id)
-```
 
-### TaskModel
-Productivity task tracking and completion records.
-
-```python
+TaskModel
+Tracks completed productivity tasks.
 from models import TaskModel
-
-# Record completed task
+# Record task
 task_id = TaskModel.create_completed_task(
     user_id=user_id,
-    title="Complete project proposal",
-    duration=90,  # minutes
+    title="Write report",
+    duration=90,
     category="work"
 )
-```
 
-### ReadingSessionModel
-Reading session tracking with progress updates.
-
-```python
+ReadingSessionModel
+Logs reading sessions and updates book progress.
 from models import ReadingSessionModel
-
-# Log reading session
+# Log session
 session_id = ReadingSessionModel.create_session(
     user_id=user_id,
     book_id=book_id,
     pages_read=25,
-    duration=45  # minutes
+    duration=45
 )
-```
 
-### AdminUtils
-Administrative tools for user and system management.
+QuoteModel
+Manages quote submissions and verification for rewards.
+from models import QuoteModel
+# Submit quote
+quote_id, error = QuoteModel.submit_quote(
+    user_id=user_id,
+    book_id=book_id,
+    quote_text="The white man is very clever...",
+    page_number=45
+)
+# Verify quote (admin)
+QuoteModel.verify_quote(quote_id, admin_id, approved=True)
 
-```python
+TransactionModel
+Tracks financial transactions for quote rewards.
+from models import TransactionModel
+# Create transaction
+transaction_id = TransactionModel.create_transaction(
+    user_id=user_id,
+    amount=10,
+    reward_type="quote_verified",
+    description="Quote verification reward",
+    quote_id=quote_id
+)
+
+ClubModel
+Manages book clubs and memberships.
+from models import ClubModel
+# Create club
+club_id = ClubModel.create_club(
+    name="Fiction Readers",
+    description="Discuss fiction novels",
+    topic="Fiction",
+    creator_id=user_id
+)
+# Add member
+ClubModel.add_member(club_id, user_id)
+
+ClubPostModel
+Handles discussion posts in clubs.
+from models import ClubPostModel
+# Create post
+post_id = ClubPostModel.create_post(club_id, user_id, "Loved this chapter!")
+
+ClubChatMessageModel
+Manages real-time club chat messages.
+from models import ClubChatMessageModel
+# Send message
+msg_id = ClubChatMessageModel.send_message(club_id, user_id, "Great discussion!")
+
+FlashcardModel
+Creates and manages learning flashcards.
+from models import FlashcardModel
+# Create flashcard
+card_id = FlashcardModel.create_flashcard(
+    user_id=user_id,
+    front="Quote text",
+    back="Meaning",
+    tags=["literature"]
+)
+
+QuizQuestionModel
+Manages quiz questions for daily challenges.
+from models import QuizQuestionModel
+# Create question
+q_id = QuizQuestionModel.create_question(
+    question="What is the theme of Things Fall Apart?",
+    options=["A", "B", "C", "D"],
+    answer="A",
+    creator_id=user_id
+)
+
+QuizAnswerModel
+Tracks user quiz submissions.
+from models import QuizAnswerModel
+# Submit answer
+ans_id = QuizAnswerModel.submit_answer(
+    user_id=user_id,
+    question_id=q_id,
+    answer="A",
+    is_correct=True
+)
+
+AdminUtils
+Provides admin tools for user and system management.
 from models import AdminUtils
-
-# Get system statistics
+# Get stats
 stats = AdminUtils.get_system_statistics()
-
-# Get all users with pagination
+# Get users
 users, total = AdminUtils.get_all_users(page=1, per_page=50, search="john")
-
-# Award points to user
+# Award points
 AdminUtils.update_user_points(user_id, 100, "Admin bonus")
-
-# Reset user progress
+# Reset progress
 AdminUtils.reset_user_progress(user_id, reset_type="rewards")
-```
 
-### ActivityLogger
-Comprehensive activity logging system.
-
-```python
+ActivityLogger
+Logs user and system activities.
 from models import ActivityLogger
-
-# Log user activity
 ActivityLogger.log_activity(
     user_id=user_id,
     action="book_completed",
-    description="Finished reading The Great Gatsby",
-    metadata={"book_id": str(book_id), "pages": 180}
+    description="Finished Things Fall Apart",
+    metadata={"book_id": str(book_id), "pages": 209}
 )
-```
 
-## Admin Features
+Admin Features
+Default Admin User
 
-### Default Admin User
-- **Username**: Set via `ADMIN_USERNAME` environment variable (default: "admin")
-- **Password**: Set via `ADMIN_PASSWORD` environment variable (default: "admin123")
-- **Email**: Set via `ADMIN_EMAIL` environment variable (default: "admin@nookhook.com")
+Username: ADMIN_USERNAME (default: "admin")
+Password: ADMIN_PASSWORD (default: "admin123")
+Email: ADMIN_EMAIL (default: "admin@nooks.com")
 
-### Admin Capabilities
-- View system statistics and analytics
-- Manage all user accounts
-- Award/deduct points from users
-- Reset user progress (books, tasks, rewards, or all)
-- Bulk user operations
-- System maintenance and cleanup
-- View detailed user activity logs
-- Export system data
+Admin Capabilities
 
-### Admin Routes
-- `/admin/` - Dashboard with system overview
-- `/admin/users` - User management with search and filtering
-- `/admin/user/<id>` - Detailed user profile and management
-- `/admin/analytics` - System analytics and insights
-- `/admin/content` - Content management and statistics
-- `/admin/rewards` - Reward system management
-- `/admin/system_maintenance` - Database cleanup tools
+View system statistics and analytics.
+Manage users, quotes, and rewards.
+Award/deduct points.
+Reset user progress (books, tasks, rewards, or all).
+Bulk operations for quotes and users.
+View activity logs and export data.
 
-## Database Indexes
+Admin Routes
 
-The system automatically creates the following indexes for optimal performance:
+/admin/: Dashboard with system overview.
+/admin/users: User management with search/filtering.
+/admin/user/<id>: User profile and management.
+/admin/analytics: System analytics.
+/admin/content: Content management.
+/admin/rewards: Reward system management.
+/admin/quotes/pending: Quote verification queue.
+/admin/system_maintenance: Database cleanup tools.
 
-### Users Collection
-- `username` (unique)
-- `email` (unique)
-- `created_at`
+Database Indexes
+Users Collection
 
-### Books Collection
-- `user_id + status`
-- `user_id + added_at`
-- `isbn` (sparse)
+username (unique)
+email (unique)
+created_at
+is_admin
 
-### Reading Sessions
-- `user_id + date`
-- `user_id + book_id`
+Books Collection
 
-### Completed Tasks
-- `user_id + completed_at`
-- `user_id + category`
+user_id + status
+user_id + added_at
+isbn (sparse)
+pdf_path (sparse)
 
-### Rewards
-- `user_id + date`
-- `user_id + source`
-- `user_id + category`
+Reading Sessions
 
-### User Badges
-- `user_id + badge_id` (unique)
-- `user_id + earned_at`
+user_id + date
+user_id + book_id
 
-### Activity Log
-- `user_id + timestamp`
-- `timestamp` (TTL index - expires after 30 days)
+Completed Tasks
 
-## Data Validation
+user_id + completed_at
+user_id + category
 
-### User Schema
-```python
+Rewards
+
+user_id + date
+user_id + source
+user_id + category
+
+User Badges
+
+user_id + badge_id (unique)
+user_id + earned_at
+
+Activity Log
+
+user_id + timestamp
+timestamp (TTL, expires after 30 days)
+action
+
+Quotes
+
+user_id + status
+user_id + submitted_at
+book_id + user_id
+status
+submitted_at
+
+Transactions
+
+user_id + timestamp
+user_id + status
+quote_id (sparse)
+reward_type
+
+User Purchases
+
+user_id + purchased_at
+user_id + item_id
+user_id + type
+
+Clubs
+
+None (add indexes based on query patterns, e.g., creator_id, is_active).
+
+Club Posts
+
+club_id + created_at
+
+Club Chat Messages
+
+club_id + timestamp
+
+Flashcards
+
+user_id + created_at
+
+Quiz Questions
+
+creator_id + created_at
+
+Quiz Answers
+
+user_id + submitted_at
+question_id
+
+User Progress
+
+user_id + module
+
+Data Validation
+User Schema
 {
     'username': str (required, unique),
     'email': str (required, unique),
     'password_hash': str (required),
     'is_admin': bool (default: False),
     'is_active': bool (default: True),
+    'accepted_terms': bool (required, default: False),
+    'created_at': datetime (required),
+    'updated_at': datetime (required),
+    'last_login': datetime,
     'total_points': int (default: 0),
     'level': int (default: 1),
     'profile': {
         'display_name': str,
         'bio': str,
-        'avatar_url': str,
+        'avatar_url': str (nullable),
         'timezone': str,
         'theme': str
     },
@@ -279,109 +381,242 @@ The system automatically creates the following indexes for optimal performance:
         'notifications_enabled': bool,
         'email_notifications': bool,
         'privacy_level': str,
-        'reading_goal_target': int
+        'default_book_status': str,
+        'reading_goal_type': str,
+        'reading_goal_target': int,
+        'avatar': {
+            'style': str,
+            'options': {
+                'hair': [str],
+                'backgroundColor': [str],
+                'flip': bool
+            }
+        }
+    },
+    'statistics': {
+        'books_read': int,
+        'pages_read': int,
+        'reading_streak': int,
+        'tasks_completed': int,
+        'productivity_streak': int,
+        'total_focus_time': int
     }
 }
-```
 
-### Book Schema
-```python
+Book Schema
 {
     'user_id': ObjectId (required),
     'title': str (required),
     'authors': [str],
     'isbn': str,
     'genre': str,
-    'status': str ('to_read', 'reading', 'finished'),
+    'description': str,
+    'cover_url': str,
     'total_pages': int,
     'current_page': int,
-    'rating': int (1-5),
+    'status': str ('to_read', 'reading', 'finished'),
+    'rating': int,
+    'review': str,
     'quotes': [str],
     'notes': [str],
-    'tags': [str]
+    'tags': [str],
+    'added_at': datetime (required),
+    'started_at': datetime,
+    'finished_at': datetime,
+    'pdf_path': str,
+    'is_encrypted': bool (default: False)
 }
-```
 
-## Error Handling
+Quote Schema
+{
+    'user_id': ObjectId (required),
+    'book_id': ObjectId (required),
+    'quote_text': str (required),
+    'page_number': int (required),
+    'status': str ('pending', 'verified', 'rejected', default: 'pending'),
+    'submitted_at': datetime (required),
+    'verified_at': datetime,
+    'verified_by': ObjectId,
+    'rejection_reason': str,
+    'reward_amount': int (default: 10)
+}
 
-All model operations include comprehensive error handling:
+Transaction Schema
+{
+    'user_id': ObjectId (required),
+    'amount': int (required),
+    'reward_type': str (required),
+    'quote_id': ObjectId,
+    'description': str,
+    'timestamp': datetime (required),
+    'status': str ('pending', 'completed', 'failed', default: 'completed')
+}
 
-```python
+Task Schema
+{
+    'user_id': ObjectId (required),
+    'title': str (required),
+    'description': str,
+    'category': str,
+    'duration': int (required),
+    'priority': str,
+    'tags': [str],
+    'completed_at': datetime (required),
+    'created_at': datetime (required)
+}
+
+Reward Schema
+{
+    'user_id': ObjectId (required),
+    'points': int (required),
+    'source': str (required),
+    'description': str (required),
+    'category': str,
+    'date': datetime (required)
+}
+
+Club Schema
+{
+    'name': str (required),
+    'description': str,
+    'topic': str,
+    'creator_id': ObjectId (required),
+    'members': [ObjectId],
+    'created_at': datetime (required),
+    'admins': [ObjectId],
+    'goals': [dict],
+    'shared_quotes': [str],
+    'is_active': bool (default: True)
+}
+
+Club Post Schema
+{
+    'club_id': ObjectId (required),
+    'user_id': ObjectId (required),
+    'content': str (required),
+    'created_at': datetime (required),
+    'comments': [dict],
+    'likes': [ObjectId]
+}
+
+Club Chat Message Schema
+{
+    'club_id': ObjectId (required),
+    'user_id': ObjectId (required),
+    'message': str (required),
+    'timestamp': datetime (required)
+}
+
+Flashcard Schema
+{
+    'user_id': ObjectId (required),
+    'front': str (required),
+    'back': str (required),
+    'tags': [str],
+    'created_at': datetime (required),
+    'review_count': int (default: 0)
+}
+
+Quiz Question Schema
+{
+    'question': str (required),
+    'options': [str] (required),
+    'answer': str (required),
+    'creator_id': ObjectId (required),
+    'tags': [str],
+    'created_at': datetime (required)
+}
+
+Quiz Answer Schema
+{
+    'user_id': ObjectId (required),
+    'question_id': ObjectId (required),
+    'answer': str (required),
+    'is_correct': bool (required),
+    'submitted_at': datetime (required)
+}
+
+Error Handling
+All model operations include robust error handling:
 try:
-    user_id, error = UserModel.create_user(username, email, password)
+    quote_id, error = QuoteModel.submit_quote(user_id, book_id, "Quote text", 45)
     if error:
-        print(f"User creation failed: {error}")
+        print(f"Quote submission failed: {error}")
     else:
-        print(f"User created successfully: {user_id}")
+        print(f"Quote submitted: {quote_id}")
 except Exception as e:
     print(f"Unexpected error: {str(e)}")
-```
 
-## Performance Considerations
+Performance Considerations
 
-1. **Indexes**: All frequently queried fields are indexed
-2. **Pagination**: Large result sets use pagination
-3. **TTL Indexes**: Activity logs auto-expire to prevent bloat
-4. **Aggregation**: Complex queries use MongoDB aggregation pipeline
-5. **Connection Pooling**: PyMongo handles connection pooling automatically
+Indexes: Optimized for frequent queries across all collections.
+Pagination: Applied to large result sets (e.g., users, quotes, transactions).
+TTL Indexes: Activity logs expire after 30 days to prevent bloat.
+Aggregation: Uses MongoDB pipelines for complex queries (e.g., quote statistics).
+Connection Pooling: Handled automatically by PyMongo.
 
-## Backup and Maintenance
+Backup and Maintenance
+Regular Maintenance Tasks
 
-### Regular Maintenance Tasks
-1. **Activity Log Cleanup**: Automatic via TTL index (30 days)
-2. **Orphaned Data Cleanup**: Admin tools available
-3. **Duplicate Badge Removal**: Admin cleanup function
-4. **User Statistics Updates**: Calculated on-demand
+Activity Log Cleanup: Automatic via TTL index (30 days).
+Orphaned Data Cleanup: Admin tools for removing invalid data.
+Duplicate Quote Detection: Built into QuoteModel.
+User Statistics Updates: Calculated on-demand via AdminUtils.
 
-### Backup Recommendations
-```bash
+Backup Recommendations
 # Create backup
 mongodump --uri="your-mongodb-uri" --out=backup-$(date +%Y%m%d)
-
 # Restore backup
-mongorestore --uri="your-mongodb-uri" backup-20231201/
-```
+mongorestore --uri="your-mongodb-uri" backup-20250907/
 
-## Troubleshooting
+Troubleshooting
+Common Issues
 
-### Common Issues
+Connection Failed:
+Verify MONGO_URI.
+Ensure MongoDB server is running.
+Check network connectivity.
 
-1. **Connection Failed**
-   - Check MongoDB URI
-   - Verify MongoDB server is running
-   - Check network connectivity
 
-2. **Admin User Not Created**
-   - Verify environment variables are set
-   - Check if user already exists
-   - Review application logs
+Admin User Not Created:
+Confirm environment variables (ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_EMAIL).
+Check for existing admin user.
+Review logs for errors.
 
-3. **Index Creation Failed**
-   - Check MongoDB permissions
-   - Verify sufficient disk space
-   - Review MongoDB logs
 
-4. **Performance Issues**
-   - Check if indexes are being used
-   - Monitor query performance
-   - Consider adding more indexes
+Index Creation Failed:
+Verify MongoDB permissions and disk space.
+Check MongoDB logs.
 
-### Debug Mode
-Enable debug logging:
 
-```python
+Performance Issues:
+Confirm index usage with explain().
+Monitor query performance.
+Add indexes for new query patterns (e.g., clubs).
+
+
+
+Debug Mode
+Enable detailed logging:
 import logging
 logging.basicConfig(level=logging.DEBUG)
-```
 
-## Migration and Updates
+Migration and Updates
 
-When updating the database schema:
+Avatar Migration: DatabaseManager._migrate_user_avatars adds default avatar preferences (avataaars) to existing users.
+Best Practices:
+Test migrations on development data.
+Back up database before schema changes.
+Deploy changes gradually.
+Monitor performance post-migration.
+Maintain rollback plan.
 
-1. **Test on Development**: Always test migrations on development data
-2. **Backup First**: Create full backup before any schema changes
-3. **Gradual Rollout**: Deploy changes gradually
-4. **Monitor Performance**: Watch for performance impacts
-5. **Rollback Plan**: Have a rollback strategy ready
 
-The model system is designed to be backward-compatible and handles missing fields gracefully.
+Backward Compatibility: Models handle missing fields gracefully.
+
+Notes
+
+Secure Book Uploads: PDFs are encrypted, stored privately (accessible only to uploader/admins), and viewable via secure in-app reader (downloads disabled).
+Quote Rewards: Verbatim quotes (10–1000 characters) earn ₦10 upon admin verification, with anti-fraud measures (duplicate detection, page validation).
+Social Features: Book clubs, posts, and real-time chat enhance community engagement.
+Learning Tools: Flashcards and quizzes support educational goals, with progress tracking via UserProgressModel.
