@@ -44,9 +44,9 @@ footer {
     text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.15);
     transition: transform 0.2s ease-in-out;
     min-height: auto;
-    padding: 1rem;
+    padding: 1.5rem; /* Increased padding to balance removed footer */
     box-sizing: border-box;
-    overflow: hidden; /* Prevent content spillover */
+    overflow: hidden;
 }
 
 .card:hover {
@@ -60,78 +60,81 @@ footer {
 }
 
 .total-books-card {
-    border: 1.5px solid var(--primary-color) !important; /* blue */
+    border: 3px solid var(--primary-color) !important; /* blue */
 }
 
 .completed-tasks-card {
-    border: 1.5px solid var(--nook-color) !important; /* green */
+    border: 3px solid var(--nook-color) !important; /* green */
 }
 
 .reading-streak-card {
-    border: 1.5px solid #ffc107 !important; /* yellow */
+    border: 3px solid #ffc107 !important; /* yellow */
 }
 
 .task-streak-card {
-    border: 1.5px solid var(--hook-color) !important; /* cyan */
+    border: 3px solid var(--hook-color) !important; /* cyan */
 }
 
 /* Home Page Cards */
 .nook-card {
-    border: 1.5px solid var(--nook-color) !important; /* green */
+    border: 3px solid var(--nook-color) !important; /* green */
 }
 
 .hook-card {
-    border: 1.5px solid var(--hook-color) !important; /* cyan */
+    border: 3px solid var(--hook-color) !important; /* cyan */
 }
 
 .nooks-club-card {
-    border: 1.5px solid var(--primary-color) !important; /* blue */
+    border: 3px solid var(--primary-color) !important; /* blue */
 }
 
 .mini-modules-card {
-    border: 1.5px solid #ffc107 !important; /* yellow */
+    border: 3px solid #ffc107 !important; /* yellow */
 }
 
 /* Chart and Recent Activity Cards */
 .reading-progress-card, .task-analytics-card, .recent-books-card, .recent-rewards-card {
-    border: 1.5px solid var(--primary-color) !important; /* blue for consistency */
+    border: 3px solid var(--primary-color) !important; /* blue for consistency */
 }
 
 .card-body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 0.5rem; /* Reduced gap due to less content */
+    gap: 0.5rem;
     height: 100%;
-    padding: 1rem; /* Reduced padding for balance */
+    padding: 1rem;
 }
 
-/* Card Footer */
-.card-footer {
-    margin-top: auto;
-    padding: 0.75rem 0;
+/* Taglines Section */
+.taglines-section {
+    margin-top: 1.5rem; /* Space below cards */
+    margin-bottom: 3rem; /* Space above Quick Actions */
+}
+
+.tagline-item {
     text-align: center;
-    border-top: 1px solid #eee;
+    padding: 0.75rem 0; /* Match previous card-footer padding */
 }
 
 /* Wrapper container for the cards */
 .cards-container {
-    margin-bottom: 4rem; /* Increased for separation */
+    margin-bottom: 4rem;
 }
 
 .cards-container .row {
     display: flex;
     flex-wrap: wrap;
-    align-items: stretch; /* Equal card heights */
+    align-items: stretch;
 }
 
-/* Align card buttons above footer */
+/* Align card buttons */
 .card-buttons {
     display: flex !important;
     flex-direction: column;
     gap: 0.75rem !important;
     margin-top: 1rem !important;
-    margin-bottom: 1.5rem !important; /* Increased for footer separation */
+    margin-bottom: 1.5rem !important;
 }
 
 .card-buttons .btn {
@@ -145,8 +148,8 @@ footer {
 
 /* Quick Actions Section */
 .quick-actions-section {
-    margin-top: 5rem; /* Increased for clear separation */
-    margin-bottom: 3rem; /* Ensure no overlap with content below */
+    margin-top: 4rem; /* Adjusted for taglines section */
+    margin-bottom: 3rem;
 }
 
 .quick-actions.btn {
@@ -221,10 +224,13 @@ footer {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .cards-container .row {
+    .cards-container .row, .taglines-section .row {
         display: block;
     }
     .card {
+        margin: 0.5rem 0;
+    }
+    .tagline-item {
         margin: 0.5rem 0;
     }
     .timer-display {
@@ -287,7 +293,7 @@ footer {
 }
 
 .btn-login:focus, .btn-register:focus, .btn-nook:focus, .btn-hook:focus, .quick-actions.btn:focus {
-    outline: 1.5px solid #0d6efd;
+    outline: 3px solid #0d6efd;
     outline-offset: 2px;
 }
 
@@ -389,3 +395,7 @@ footer {
     color: white !important;
 }
 
+.btn-outline-warning:hover {
+    background-color: #ffc107;
+    color: black !important;
+}
