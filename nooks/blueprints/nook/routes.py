@@ -1,10 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app, send_file
-from flask_login import login_required
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
+from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
-from utils.decorators import login_required
 from utils.google_books import search_books, get_book_details
 from blueprints.rewards.services import RewardService
 import logging
@@ -24,7 +23,7 @@ fernet = Fernet(ENCRYPTION_KEY)
 @nook_bp.route('/')
 @login_required
 def index():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     books = list(current_app.mongo.db.books.find({'user_id': user_id}).sort('added_at', -1))
     
     # Calculate stats
@@ -62,11 +61,7 @@ def index():
 def add_book():
     if request.method == 'POST':
         try:
-            user_id = ObjectId(session.get('user_id'))
-            if not user_id:
-                flash("User session missing.", "danger")
-                return redirect(request.url)
-
+            user_id = ObjectId(current_user.id)
             # Check user agreement
             if not request.form.get('agree_terms'):
                 flash('You must agree to the terms before uploading.', 'danger')
@@ -203,10 +198,7 @@ def add_book():
 @login_required
 def edit_book(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.my_uploads'))
+        user_id = ObjectId(current_user.id)
         book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
         if not book:
             flash('Book not found.', 'danger')
@@ -273,11 +265,7 @@ def edit_book(book_id):
 @login_required
 def delete_book(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.my_uploads'))
-        
+        user_id = ObjectId(current_user.id)
         book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
         if not book:
             flash('Book not found.', 'danger')
@@ -326,11 +314,7 @@ def delete_book(book_id):
 @login_required
 def serve_pdf(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
-        
+        user_id = ObjectId(current_user.id)
         # Fetch user to check admin status
         user = current_app.mongo.db.users.find_one({'_id': user_id})
         if not user:
@@ -379,10 +363,7 @@ def serve_pdf(book_id):
 @login_required
 def my_uploads():
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.index'))
+        user_id = ObjectId(current_user.id)
         books = list(current_app.mongo.db.books.find({'user_id': user_id, 'pdf_path': {'$ne': None}}).sort('added_at', -1))
         return render_template('nook/my_uploads.html', books=books)
     except Exception as e:
@@ -403,10 +384,7 @@ def search_books_route():
 @login_required
 def book_detail(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.index'))
+        user_id = ObjectId(current_user.id)
         book = current_app.mongo.db.books.find_one({
             '_id': ObjectId(book_id),
             'user_id': user_id
@@ -432,10 +410,7 @@ def book_detail(book_id):
 @login_required
 def update_progress(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        user_id = ObjectId(current_user.id)
         current_page = int(request.form.get('current_page', 0))
         session_notes = request.form.get('session_notes', '')
         
@@ -521,10 +496,7 @@ def update_progress(book_id):
 @login_required
 def add_takeaway(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        user_id = ObjectId(current_user.id)
         takeaway = request.form.get('takeaway', '')
         page_reference = request.form.get('page_reference', '')
         
@@ -561,10 +533,7 @@ def add_takeaway(book_id):
 @login_required
 def add_quote(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        user_id = ObjectId(current_user.id)
         quote = request.form.get('quote', '')
         page = request.form.get('page', '')
         context = request.form.get('context', '')
@@ -611,10 +580,7 @@ def add_quote(book_id):
 @login_required
 def rate_book(book_id):
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        user_id = ObjectId(current_user.id)
         rating = int(request.form.get('rating', 0))
         review = request.form.get('review', '')
         
@@ -648,11 +614,7 @@ def rate_book(book_id):
 @login_required
 def library():
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.index'))
-        
+        user_id = ObjectId(current_user.id)
         # Get filter parameters
         status_filter = request.args.get('status', 'all')
         genre_filter = request.args.get('genre', 'all')
@@ -694,11 +656,7 @@ def library():
 @login_required
 def analytics():
     try:
-        user_id = ObjectId(session.get('user_id'))
-        if not user_id:
-            flash("User session missing.", "danger")
-            return redirect(url_for('nook.index'))
-        
+        user_id = ObjectId(current_user.id)
         # Get reading analytics data
         books = list(current_app.mongo.db.books.find({'user_id': user_id}))
         sessions = list(current_app.mongo.db.reading_sessions.find({'user_id': user_id}))
