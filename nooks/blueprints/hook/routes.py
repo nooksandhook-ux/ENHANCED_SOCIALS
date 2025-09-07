@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime, timedelta
-from utils.decorators import login_required
 from blueprints.rewards.services import RewardService
 
 hook_bp = Blueprint('hook', __name__, template_folder='templates')
@@ -9,7 +9,7 @@ hook_bp = Blueprint('hook', __name__, template_folder='templates')
 @hook_bp.route('/')
 @login_required
 def index():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get recent completed tasks
     completed_tasks = list(current_app.mongo.db.completed_tasks.find({
@@ -55,7 +55,7 @@ def index():
 @hook_bp.route('/timer')
 @login_required
 def timer():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     active_timer = current_app.mongo.db.active_timers.find_one({'user_id': user_id})
     
     # Get user preferences
@@ -81,7 +81,7 @@ def timer():
 @hook_bp.route('/start_timer', methods=['POST'])
 @login_required
 def start_timer():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     task_name = request.form['task_name']
     duration = int(request.form['duration'])  # in minutes
@@ -114,7 +114,7 @@ def start_timer():
 @hook_bp.route('/pause_timer', methods=['POST'])
 @login_required
 def pause_timer():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     timer = current_app.mongo.db.active_timers.find_one({'user_id': user_id})
     if timer:
@@ -144,7 +144,7 @@ def pause_timer():
 @hook_bp.route('/complete_timer', methods=['POST'])
 @login_required
 def complete_timer():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     timer = current_app.mongo.db.active_timers.find_one({'user_id': user_id})
     if timer:
@@ -209,14 +209,14 @@ def complete_timer():
 @hook_bp.route('/cancel_timer', methods=['POST'])
 @login_required
 def cancel_timer():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     current_app.mongo.db.active_timers.delete_many({'user_id': user_id})
     return jsonify({'status': 'success', 'message': 'Timer cancelled'})
 
 @hook_bp.route('/get_timer_status')
 @login_required
 def get_timer_status():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     timer = current_app.mongo.db.active_timers.find_one({'user_id': user_id})
     
     if timer:
@@ -246,7 +246,7 @@ def get_timer_status():
 @hook_bp.route('/history')
 @login_required
 def history():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get filter parameters
     category_filter = request.args.get('category', 'all')
@@ -298,7 +298,7 @@ def history():
 @hook_bp.route('/analytics')
 @login_required
 def analytics():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     
     # Get analytics data
     tasks = list(current_app.mongo.db.completed_tasks.find({'user_id': user_id}))
@@ -329,7 +329,7 @@ def analytics():
 @hook_bp.route('/themes')
 @login_required
 def themes():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     
     available_themes = [
@@ -349,7 +349,7 @@ def themes():
 @hook_bp.route('/set_theme', methods=['POST'])
 @login_required
 def set_theme():
-    user_id = ObjectId(session['user_id'])
+    user_id = ObjectId(current_user.id)
     theme = request.form['theme']
     
     current_app.mongo.db.users.update_one(
