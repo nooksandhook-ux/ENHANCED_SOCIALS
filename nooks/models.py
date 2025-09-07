@@ -1,4 +1,5 @@
 from flask import current_app
+from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from datetime import datetime, timedelta
@@ -17,7 +18,23 @@ class User(UserMixin):
         self.username = user_data['username']
         self.email = user_data['email']
         self.is_admin = user_data.get('is_admin', False)
-        self.is_active = user_data.get('is_active', True)
+        self.active = user_data.get('is_active', True)  
+        self.authenticated = True
+
+    @property
+    def is_authenticated(self):
+        return self.authenticated
+
+    @property
+    def is_active(self):
+        return self.active
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return self.id
 
 class DatabaseManager:
     """Manages database initialization and schema creation"""
@@ -1389,3 +1406,4 @@ class GoogleBooksAPI:
         except Exception as e:
             logger.error(f"Error getting book details: {str(e)}")
             return None
+
