@@ -30,14 +30,71 @@ socket.on('chat_message', (data) => {
     {% if is_admin %}
     <div class="admin-actions">
       <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Club Chat: {{ club_name }}</h2>
+  <nav class="mb-3">
+    <a href="{{ url_for('nooks_club.view_club', club_id=club_id) }}" class="btn btn-outline-secondary">Back to {{ club_name }}</a>
+  </nav>
+  <div id="club-chat-box" data-club-id="{{ club_id }}">
+    <div id="chat-box" class="card mb-2" style="height:300px;overflow-y:auto;"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" class="form-control mb-2" placeholder="Type a message...">
+      <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-primary">Send</button>
+    </form>
+  </div>
+</div>
+{% block extra_scripts %}
+<style>
+.admin-actions {
+  position: relative; /* Ensure menu is positioned absolutely within this */
+}
+.admin-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  white-space: nowrap;
+  z-index: 1000;
+  display: none;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 4px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.admin-menu.show {
+  display: block;
+}
+.admin-menu.right-adjust {
+  left: auto;
+  right: 0;
+}
+</style>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const socket = io();
+socket.on('connect', () => {
+  socket.emit('join_club', { club_id: '{{ club_id }}', user_id: '{{ current_user.id }}', username: '{{ current_user.username }}' });
+});
+socket.on('chat_message', (data) => {
+  const chatBox = document.getElementById('chat-box');
+  const message = document.createElement('div');
+  message.className = 'p-2 position-relative';
+  message.innerHTML = `
+    <div class="admin-actions">
+      <p>${data.message} <small class="text-muted">by ${data.username}</small></p>
+      {% if is_admin %}
+      <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
       <div class="admin-menu">
         <button class="btn btn-danger btn-sm" onclick="deleteMessage('${data.message_id}')">Delete</button>
       </div>
+      {% endif %}
     </div>
-    {% endif %}
   `;
   chatBox.appendChild(message);
   chatBox.scrollTop = chatBox.scrollHeight;
+  adjustAdminMenus();
 });
 function loadMessages() {
   fetch('{{ url_for("nooks_club.api_get_club_chat", club_id=club_id) }}')
@@ -50,19 +107,20 @@ function loadMessages() {
           const message = document.createElement('div');
           message.className = 'p-2 position-relative';
           message.innerHTML = `
-            <p>${msg.message} <small class="text-muted">by ${msg.username}</small></p>
-            {% if is_admin %}
             <div class="admin-actions">
+              <p>${msg.message} <small class="text-muted">by ${msg.username}</small></p>
+              {% if is_admin %}
               <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
               <div class="admin-menu">
                 <button class="btn btn-danger btn-sm" onclick="deleteMessage('${msg._id}')">Delete</button>
               </div>
+              {% endif %}
             </div>
-            {% endif %}
           `;
           chatBox.appendChild(message);
         });
         chatBox.scrollTop = chatBox.scrollHeight;
+        adjustAdminMenus();
       }
     })
     .catch(error => console.error('Error fetching messages:', error));
@@ -116,13 +174,36 @@ document.getElementById('chat-form').addEventListener('submit', (e) => {
       .catch(error => console.error('Error sending message:', error));
   }
 });
+
+// Adjust admin menu position to avoid screen clipping
+function adjustAdminMenus() {
+  document.querySelectorAll('.admin-menu').forEach(menu => {
+    menu.classList.remove('right-adjust');
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.classList.add('right-adjust');
+    }
+    if (rect.bottom > window.innerHeight) {
+      // If needed you could also add a 'bottom-adjust' class and handle with CSS
+      menu.style.top = 'auto';
+      menu.style.bottom = '100%';
+    } else {
+      menu.style.top = '100%';
+      menu.style.bottom = 'auto';
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadMessages();
   document.querySelectorAll('.admin-menu-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const menu = btn.nextElementSibling; // assumes menu is right after button
-      if(menu) menu.classList.toggle('show');
+      if(menu) {
+        menu.classList.toggle('show');
+        adjustAdminMenus();
+      }
     });
   });
   // Close menus if clicked outside
@@ -131,6 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
       menu.classList.remove('show');
     });
   });
+  // Re-adjust on resize
+  window.addEventListener('resize', adjustAdminMenus);
 });
 </script>
 {% endblock %}
