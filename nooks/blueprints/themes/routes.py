@@ -4,6 +4,11 @@ from bson import ObjectId
 from datetime import datetime
 import requests  # For DiceBear API calls
 import urllib.parse  # For URL encoding
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 themes_bp = Blueprint('themes', __name__, template_folder='templates')
 
@@ -291,6 +296,15 @@ def api_avatar_preview(style):
     
     return jsonify({'avatar_url': avatar_url})
 
+@themes_bp.route('/api/avatar_customization_options/<style>')
+@login_required
+def api_avatar_customization_options(style):
+    """Get customization options for a specific avatar style"""
+    options = get_avatar_customization_options(style)
+    if not options:
+        return jsonify({'error': 'Invalid avatar style'}), 404
+    return jsonify(options)
+
 @themes_bp.route('/export_theme')
 @login_required
 def export_theme():
@@ -479,7 +493,7 @@ def get_available_themes():
 
 def get_timer_themes():
     """Get available timer-specific themes"""
-    return [
+    themes = [
         {
             'name': 'default',
             'display_name': 'Default',
@@ -545,6 +559,8 @@ def get_timer_themes():
             'accent_color': '#9370DB'
         }
     ]
+    logger.debug(f"Available timer themes: {[t['name'] for t in themes]}")
+    return themes
 
 def get_available_avatars():
     """Get available avatar styles from DiceBear"""
