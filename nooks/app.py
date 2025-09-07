@@ -25,8 +25,8 @@ from blueprints.dashboard.routes import dashboard_bp
 from blueprints.themes.routes import themes_bp
 from blueprints.api.routes import api_bp
 from blueprints.quotes.routes import quotes_bp
-from blueprints.nooks_club import nooks_club_bp
-from blueprints.mini_modules import mini_modules_bp
+from blueprints.nooks_club.routes import nooks_club_bp
+from blueprints.mini_modules.routes import mini_modules_bp
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -180,6 +180,7 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
 
 
