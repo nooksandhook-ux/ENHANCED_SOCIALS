@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
+from flask_wtf.csrf import generate_csrf
 from bson import ObjectId
 from datetime import datetime, timedelta
 import logging
-from models import QuizQuestionModel, ClubModel, ClubPostModel, ClubChatMessageModel, FlashcardModel, QuizAnswerModel, UserProgressModel
+from models import QuizQuestionModel, ClubModel, ClubPostModel, ClubChatMessageModel, FlashcardModel, QuizAnswerModel, UserProgressModel, UserModel
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length
@@ -28,7 +29,7 @@ def is_club_admin(club, user_id):
 def index():
     try:
         logger.info(f"Accessing clubs index for user {current_user.id}")
-        return render_template('nooks_club/index.html')
+        return render_template('nooks_club/index.html', csrf_token=generate_csrf())
     except Exception as e:
         logger.error(f"Error accessing clubs index for user {current_user.id}: {str(e)}", exc_info=True)
         flash("An error occurred while loading clubs. Please try again.", "danger")
@@ -40,7 +41,7 @@ def my_clubs():
     try:
         logger.info(f"User {current_user.id} accessing their joined clubs")
         clubs = ClubModel.get_user_clubs(str(current_user.id))
-        return render_template('nooks_club/my_clubs.html', clubs=clubs)
+        return render_template('nooks_club/my_clubs.html', clubs=clubs, csrf_token=generate_csrf())
     except Exception as e:
         logger.error(f"Error fetching joined clubs for user {current_user.id}: {str(e)}", exc_info=True)
         flash("An error occurred while loading your clubs. Please try again.", "danger")
@@ -52,7 +53,7 @@ def created_clubs():
     try:
         logger.info(f"User {current_user.id} accessing their created clubs")
         clubs = ClubModel.get_created_clubs(str(current_user.id))
-        return render_template('nooks_club/created_clubs.html', clubs=clubs)
+        return render_template('nooks_club/created_clubs.html', clubs=clubs, csrf_token=generate_csrf())
     except Exception as e:
         logger.error(f"Error fetching created clubs for user {current_user.id}: {str(e)}", exc_info=True)
         flash("An error occurred while loading your created clubs. Please try again.", "danger")
@@ -69,7 +70,8 @@ def view_club(club_id):
             return redirect(url_for('nooks_club.index'))
         is_admin = is_club_admin(club, current_user.id)
         is_member = str(current_user.id) in [str(m) for m in club.get('members', [])]
-        return render_template('nooks_club/club_detail.html', club=club, club_id=club_id, is_admin=is_admin, is_member=is_member)
+        creator_username = UserModel.get_username_by_id(club['creator_id']) or club['creator_id']
+        return render_template('nooks_club/club_detail.html', club=club, club_id=club_id, is_admin=is_admin, is_member=is_member, creator_username=creator_username, csrf_token=generate_csrf())
     except Exception as e:
         logger.error(f"Error accessing club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -101,7 +103,7 @@ def create_club():
             ClubModel.create_club(name, description, topic, str(current_user.id))
             flash('Club created successfully!', 'success')
             return redirect(url_for('nooks_club.created_clubs'))
-        return render_template('nooks_club/create_club.html', form=form)
+        return render_template('nooks_club/create_club.html', form=form, csrf_token=generate_csrf())
     except Exception as e:
         logger.error(f"Error creating club for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -131,7 +133,7 @@ def club_chat(club_id):
             flash("Club not found.", "danger")
             return redirect(url_for('nooks_club.index'))
         is_admin = is_club_admin(club, current_user.id)
-        return render_template('nooks_club/chat.html', club_id=club_id, is_admin=is_admin)
+        return render_template('nooks_club/chat.html', club_id=club_id, is_admin=is_admin, csrf_token=generate_csrf())
     except Exception as e:
         logger.error(f"Error accessing chat for club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -148,6 +150,7 @@ def api_get_clubs():
         for c in clubs:
             c['_id'] = str(c['_id'])
             c['creator_id'] = str(c['creator_id'])
+            c['creator_username'] = UserModel.get_username_by_id(c['creator_id']) or c['creator_id']
             c['members'] = [str(m) for m in c.get('members', [])]
             c['is_admin'] = is_club_admin(c, current_user.id)
         return jsonify({'clubs': clubs})
@@ -180,7 +183,10 @@ def api_get_club(club_id):
             return jsonify({'error': 'Club not found'}), 404
         club['_id'] = str(club['_id'])
         club['creator_id'] = str(club['creator_id'])
+        club['creator_username'] = UserModel.get_username_by_id(club['creator_id']) or club['creator_id']
         club['members'] = [str(m) for m in club.get('members', [])]
+        club['admins'] = [str(a) for a in club.get('admins', [])]
+        club['admin_usernames'] = [UserModel.get_username_by_id(a) or a for a in club['admins']]
         club['is_admin'] = is_club_admin(club, current_user.id)
         return jsonify(club)
     except Exception as e:
@@ -208,6 +214,7 @@ def api_get_club_posts(club_id):
             p['_id'] = str(p['_id'])
             p['club_id'] = str(p['club_id'])
             p['user_id'] = str(p['user_id'])
+            p['username'] = UserModel.get_username_by_id(p['user_id']) or p['user_id']
         return jsonify({'posts': posts})
     except Exception as e:
         logger.error(f"Error fetching posts for club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
@@ -241,6 +248,7 @@ def api_get_club_chat(club_id):
             m['_id'] = str(m['_id'])
             m['club_id'] = str(m['club_id'])
             m['user_id'] = str(m['user_id'])
+            m['username'] = UserModel.get_username_by_id(m['user_id']) or m['user_id']
         return jsonify({'messages': messages})
     except Exception as e:
         logger.error(f"Error fetching chat for club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
@@ -345,6 +353,7 @@ def api_my_clubs():
         for c in clubs:
             c['_id'] = str(c['_id'])
             c['creator_id'] = str(c['creator_id'])
+            c['creator_username'] = UserModel.get_username_by_id(c['creator_id']) or c['creator_id']
             c['members'] = [str(m) for m in c.get('members', [])]
             c['is_admin'] = is_club_admin(c, current_user.id)
         return jsonify({'clubs': clubs})
@@ -361,6 +370,7 @@ def api_created_clubs():
         for c in clubs:
             c['_id'] = str(c['_id'])
             c['creator_id'] = str(c['creator_id'])
+            c['creator_username'] = UserModel.get_username_by_id(c['creator_id']) or c['creator_id']
             c['members'] = [str(m) for m in c.get('members', [])]
             c['is_admin'] = is_club_admin(c, current_user.id)
         return jsonify({'clubs': clubs})
@@ -408,7 +418,7 @@ def api_quiz_leaderboard():
                 'score': {'$sum': {'$cond': ['$is_correct', 1, 0]}},
                 'attempts': {'$sum': 1}
             }},
-            {'$sort': {'score': -1}},
+            {'$.hs': {'score': -1}},
             {'$limit': 50}
         ]
         leaderboard_data = list(current_app.mongo.db.quiz_answers.aggregate(pipeline))
@@ -480,6 +490,7 @@ def api_start_quiz():
         for q in questions:
             q['_id'] = str(q['_id'])
             q['creator_id'] = str(q['creator_id'])
+            q['creator_username'] = UserModel.get_username_by_id(q['creator_id']) or q['creator_id']
             q.pop('answer', None)
         return jsonify({'questions': questions, 'start_time': now.isoformat(), 'time_limit': QUIZ_TIME_LIMIT_SECONDS})
     except Exception as e:
