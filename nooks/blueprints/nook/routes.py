@@ -9,6 +9,10 @@ from blueprints.rewards.services import RewardService
 import logging
 from cryptography.fernet import Fernet
 from io import BytesIO
+from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
+from wtforms import StringField, TextAreaField, SelectField, IntegerField, HiddenField, BooleanField
+from wtforms.validators import DataRequired, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +23,21 @@ nook_bp = Blueprint('nook', __name__, template_folder='templates')
 # Initialize encryption
 ENCRYPTION_KEY = os.environ.get('UPLOAD_ENCRYPTION_KEY', Fernet.generate_key())
 fernet = Fernet(ENCRYPTION_KEY)
+
+class AddBookForm(FlaskForm):
+    pdf_file = FileField('Upload Book (PDF only, max 10MB)', validators=[FileAllowed(['pdf'], 'Only PDF files are allowed.'), Optional()])
+    terms_agreement = BooleanField('I confirm I have the legal right to upload this PDF and agree to the Terms of Service.', validators=[DataRequired()])
+    google_books_id = HiddenField('Google Books ID', validators=[Optional()])
+    cover_image = HiddenField('Cover Image', validators=[Optional()])
+    is_encrypted = HiddenField('Is Encrypted', default='true', validators=[Optional()])
+    title = StringField('Title', validators=[DataRequired()])
+    authors = StringField('Authors', validators=[DataRequired()])
+    status = SelectField('Status', choices=[('to_read', 'To Read'), ('reading', 'Currently Reading'), ('finished', 'Finished')], validators=[DataRequired()])
+    page_count = IntegerField('Page Count', validators=[Optional()])
+    description = TextAreaField('Description', validators=[Optional()])
+    genre = StringField('Genre', validators=[Optional()])
+    isbn = StringField('ISBN', validators=[Optional()])
+    published_date = StringField('Published Date', validators=[Optional()])
 
 @nook_bp.route('/')
 @login_required
@@ -59,27 +78,23 @@ def index():
 @nook_bp.route('/add_book', methods=['GET', 'POST'])
 @login_required
 def add_book():
-    if request.method == 'POST':
+    form = AddBookForm()
+    if request.method == 'POST' and form.validate_on_submit():
         try:
             user_id = ObjectId(current_user.id)
-            # Check user agreement
-            if not request.form.get('agree_terms'):
-                flash('You must agree to the terms before uploading.', 'danger')
-                return redirect(request.url)
+            # Form fields
+            google_books_id = form.google_books_id.data
+            title = form.title.data
+            authors = [a.strip() for a in form.authors.data.split(',')]
+            description = form.description.data
+            cover_image = form.cover_image.data
+            page_count = form.page_count.data or 0
+            status = form.status.data
+            genre = form.genre.data
+            isbn = form.isbn.data
+            published_date = form.published_date.data
 
-            # Form fields: use .get() and provide defaults
-            google_books_id = request.form.get('google_books_id')
-            title = request.form.get('title', '')
-            authors = [a.strip() for a in request.form.get('authors', '').split(',')]
-            description = request.form.get('description', '')
-            cover_image = request.form.get('cover_image', '')
-            page_count = int(request.form.get('page_count', 0))
-            status = request.form.get('status', 'to_read')
-            genre = request.form.get('genre', '')
-            isbn = request.form.get('isbn', '')
-            published_date = request.form.get('published_date', '')
-
-            # Check for duplicate book (same user, title, and authors)
+            # Check for duplicate book
             existing_book = current_app.mongo.db.books.find_one({
                 'user_id': user_id,
                 'title': title.strip(),
@@ -100,16 +115,10 @@ def add_book():
                 flash('Upload limit reached: Max 10 books with PDF per month.', 'danger')
                 return redirect(request.url)
 
-            pdf_file = request.files.get('pdf_file')
             pdf_path = None
-            if pdf_file and pdf_file.filename != '':
-                if not pdf_file.filename.lower().endswith('.pdf'):
-                    flash('Only PDF files are allowed.', 'danger')
-                    return redirect(request.url)
-                if pdf_file.mimetype != 'application/pdf':
-                    flash('Invalid file type.', 'danger')
-                    return redirect(request.url)
-                pdf_file.seek(0, 2)
+            pdf_file = form.pdf_file.data
+            if pdf_file:
+                pdf_file.seek(0, os.SEEK_END)
                 file_size = pdf_file.tell()
                 pdf_file.seek(0)
                 if file_size > 10 * 1024 * 1024:
@@ -191,8 +200,13 @@ def add_book():
             logger.error(f"Error adding book: {str(e)}", exc_info=True)
             flash(f"An error occurred: {str(e)}", "danger")
             return redirect(request.url)
+    elif request.method == 'POST':
+        # If form validation fails, display errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error in {field}: {error}", "danger")
 
-    return render_template('nook/add_book.html')
+    return render_template('nook/add_book.html', form=form)
 
 @nook_bp.route('/edit_book/<book_id>', methods=['GET', 'POST'])
 @login_required
