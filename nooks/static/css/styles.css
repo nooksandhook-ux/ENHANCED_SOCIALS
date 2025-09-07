@@ -402,5 +402,25 @@ footer {
     color: black !important;
 }
 
+@media (max-width: 768px) {
+  .card-buttons {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .card-buttons .btn {
+    min-width: 120px;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+    flex: 1 1 auto;
+    white-space: normal;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+  }
+}
+
 
 
