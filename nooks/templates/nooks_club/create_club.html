@@ -3,6 +3,7 @@
 <div class="container">
   <h2>Create a New Club</h2>
   <form method="post">
+    {{ form.hidden_tag() }}
     <input type="text" name="name" placeholder="Club Name" required class="form-control mb-2">
     <textarea name="description" placeholder="Description" class="form-control mb-2"></textarea>
     <button type="submit" class="btn btn-success">Create</button>
