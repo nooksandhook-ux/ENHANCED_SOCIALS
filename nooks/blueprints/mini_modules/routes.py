@@ -1,11 +1,12 @@
-from flask import render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
-from . import mini_modules_bp
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+mini_modules_bp = Blueprint('mini_modules', __name__, template_folder='templates')
 
 @mini_modules_bp.route('/')
 @login_required
