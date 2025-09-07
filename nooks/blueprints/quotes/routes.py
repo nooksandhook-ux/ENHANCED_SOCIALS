@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
+from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime
 import logging
@@ -7,9 +8,9 @@ import logging
 from models import QuoteModel, TransactionModel, BookModel, GoogleBooksAPI, UserModel
 
 # Import decorators
-from utils.decorators import login_required, admin_required
+from utils.decorators import admin_required
 
-quotes_bp = Blueprint('quotes', __name__)
+quotes_bp = Blueprint('quotes', __name__, template_folder='templates')
 logger = logging.getLogger(__name__)
 
 @quotes_bp.route('/')
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 def index():
     """Display user's quotes dashboard"""
     try:
-        user_id = session['user_id']
+        user_id = str(current_user.id)
         page = request.args.get('page', 1, type=int)
         status_filter = request.args.get('status', None)
         
@@ -56,11 +57,9 @@ def submit_quote():
     if request.method == 'GET':
         # Get user's books for the form
         try:
-            user_id = session['user_id']
-            from flask import current_app
-            
+            user_id = ObjectId(current_user.id)
             books = list(current_app.mongo.db.books.find({
-                'user_id': ObjectId(user_id),
+                'user_id': user_id,
                 'status': {'$in': ['reading', 'finished']}
             }).sort('title', 1))
             
@@ -73,7 +72,7 @@ def submit_quote():
     
     # POST request - handle quote submission
     try:
-        user_id = session['user_id']
+        user_id = str(current_user.id)
         book_id = request.form.get('book_id')
         quote_text = request.form.get('quote_text', '').strip()
         page_number = request.form.get('page_number', type=int)
@@ -136,7 +135,7 @@ def search_books():
 def add_book():
     """Add a book to user's library from Google Books"""
     try:
-        user_id = session['user_id']
+        user_id = str(current_user.id)
         google_id = request.json.get('google_id')
         
         if not google_id:
@@ -177,7 +176,7 @@ def add_book():
 def transactions():
     """Display user's transaction history"""
     try:
-        user_id = session['user_id']
+        user_id = str(current_user.id)
         page = request.args.get('page', 1, type=int)
         
         # Get user's transactions
@@ -231,7 +230,7 @@ def admin_pending():
 def admin_verify_quote(quote_id):
     """Admin endpoint to verify or reject a quote"""
     try:
-        admin_id = session['user_id']
+        admin_id = str(current_user.id)
         action = request.json.get('action')  # 'approve' or 'reject'
         rejection_reason = request.json.get('rejection_reason', '')
         
@@ -261,7 +260,7 @@ def admin_verify_quote(quote_id):
 def admin_bulk_verify():
     """Admin endpoint to bulk verify multiple quotes"""
     try:
-        admin_id = session['user_id']
+        admin_id = str(current_user.id)
         quote_ids = request.json.get('quote_ids', [])
         action = request.json.get('action')  # 'approve' or 'reject'
         rejection_reason = request.json.get('rejection_reason', '')
