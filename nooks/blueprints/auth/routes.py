@@ -54,8 +54,8 @@ class ChangePasswordForm(FlaskForm):
 # Flask-WTF Form for Avatar Customization
 class AvatarForm(FlaskForm):
     avatar_style = SelectField('Avatar Style', validators=[DataRequired()])
-    hair = SelectMultipleField('Hair Style', validators=[DataRequired()])
-    background_color = SelectMultipleField('Background Color', validators=[DataRequired()])
+    hair = SelectField('Hair Style', validators=[DataRequired()])  # Changed to SelectField for single selection
+    background_color = SelectField('Background Color', validators=[DataRequired()])  # Changed to SelectField
     flip = BooleanField('Flip Avatar')
     submit = SubmitField('Save Avatar')
 
@@ -81,7 +81,6 @@ def login():
                 flash('Login successful!', 'success')
                 return redirect(url_for('general.home'))
             else:
-                # Check why authentication failed
                 user_exists = current_app.mongo.db.users.find_one({
                     '$or': [
                         {'email': {'$regex': f'^{email}$', '$options': 'i'}},
@@ -123,7 +122,6 @@ def register():
             flash(error, 'error')
             return render_template('auth/register.html', form=form)
 
-        # Create welcome reward entry
         from blueprints.rewards.services import RewardService
         RewardService.award_points(
             user_id=user_id,
@@ -160,7 +158,8 @@ def profile():
         'total_rewards': current_app.mongo.db.rewards.count_documents({'user_id': ObjectId(current_user.id)})
     }
     
-    return render_template('auth/profile.html', user=current_user, stats=stats)
+    user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
+    return render_template('auth/profile.html', user=user, stats=stats)
 
 @auth_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
@@ -178,7 +177,7 @@ def settings():
                         if style['slug'] in free_styles or style['slug'] in purchased_styles]
     avatar_form.avatar_style.choices = available_styles
 
-    # Dynamically populate customization options based on selected style
+    # Dynamically populate customization options
     user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
     current_style = user.get('preferences', {}).get('avatar', {}).get('style', 'avataaars')
     customization_options = get_avatar_customization_options(current_style)
@@ -226,8 +225,8 @@ def settings():
         elif avatar_form.submit.data and avatar_form.validate_on_submit():
             from blueprints.themes.routes import validate_avatar_options
             avatar_options = {
-                'hair': avatar_form.hair.data,
-                'backgroundColor': avatar_form.background_color.data,
+                'hair': [avatar_form.hair.data],  # Wrap in list for consistency with schema
+                'backgroundColor': [avatar_form.background_color.data],  # Wrap in list
                 'flip': avatar_form.flip.data
             }
             is_valid, error = validate_avatar_options(avatar_form.avatar_style.data, avatar_options)
@@ -246,7 +245,6 @@ def settings():
             flash('Avatar settings updated successfully!', 'success')
             return redirect(url_for('auth.settings'))
         
-        # Flash validation errors
         for form, form_name in [(settings_form, 'Settings'), (change_password_form, 'Change Password'), (avatar_form, 'Avatar')]:
             if form.errors:
                 logger.warning(f"{form_name} form validation failed for user_id: {current_user.id} - {form.errors}")
@@ -266,14 +264,44 @@ def settings():
             'options': {'hair': ['short01'], 'backgroundColor': ['#ffffff'], 'flip': False}
         })
         avatar_form.avatar_style.data = avatar_data['style']
-        avatar_form.hair.data = avatar_data['options']['hair']
-        avatar_form.background_color.data = avatar_data['options']['backgroundColor']
+        avatar_form.hair.data = avatar_data['options']['hair'][0] if avatar_data['options']['hair'] else 'short01'
+        avatar_form.background_color.data = avatar_data['options']['backgroundColor'][0] if avatar_data['options']['backgroundColor'] else '#ffffff'
         avatar_form.flip.data = avatar_data['options']['flip']
 
     return render_template(
         'auth/settings.html',
         user=user,
-        settings_form=settings_form,
+        form=settings_form,  # Match template variable name
         change_password_form=change_password_form,
         avatar_form=avatar_form
     )
+
+@auth_bp.route('/change_password', methods=['POST'])
+@login_required
+def change_password():
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+        user = current_app.mongo.db.users.find_one({'_id': ObjectId(current_user.id)})
+        
+        if not user or 'password_hash' not in user:
+            logger.error(f"Change password failed for user_id: {current_user.id} - User account error")
+            flash('User account error. Please contact support.', 'error')
+            return redirect(url_for('auth.settings'))
+        
+        if not check_password_hash(user['password_hash'], form.current_password.data):
+            logger.warning(f"Change password failed for user_id: {current_user.id} - Incorrect current password")
+            flash('Current password is incorrect', 'error')
+            return redirect(url_for('auth.settings'))
+        
+        UserModel.update_user(current_user.id, {
+            'password_hash': generate_password_hash(form.new_password.data)
+        })
+        logger.info(f"Password changed successfully for user_id: {current_user.id}")
+        flash('Password changed successfully!', 'success')
+    else:
+        logger.warning(f"Change password form validation failed for user_id: {current_user.id} - {form.errors}")
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{field}: {error}", 'error')
+    
+    return redirect(url_for('auth.settings'))
