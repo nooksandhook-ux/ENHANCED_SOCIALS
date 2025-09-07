@@ -18,6 +18,7 @@
                 {% endfor %}
 
                 <!-- Preferences Form -->
+                <h5 class="mb-3">General Settings</h5>
                 <form method="POST">
                     {{ form.csrf_token }}
                     <div class="row">
@@ -65,6 +66,53 @@
                 
                 <hr class="my-4">
                 
+                <!-- Avatar Customization Form -->
+                <h5 class="mb-3">Avatar Customization</h5>
+                <form method="POST">
+                    {{ avatar_form.csrf_token }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="avatar_style" class="form-label">Avatar Style</label>
+                            {{ avatar_form.avatar_style(class="form-select", onchange="updateAvatarPreview(this.value)") }}
+                            {% for error in avatar_form.avatar_style.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="hair" class="form-label">Hair Style</label>
+                            {{ avatar_form.hair(class="form-select") }}
+                            {% for error in avatar_form.hair.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="background_color" class="form-label">Background Color</label>
+                            {{ avatar_form.background_color(class="form-select") }}
+                            {% for error in avatar_form.background_color.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mt-4">
+                                {{ avatar_form.flip(class="form-check-input") }}
+                                <label class="form-check-label" for="flip">
+                                    Flip Avatar
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3 text-center">
+                        <img id="avatar-preview" src="" alt="Avatar Preview" class="border rounded" style="width: 100px; height: 100px;">
+                    </div>
+                    <div class="d-grid">
+                        {{ avatar_form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+                
+                <hr class="my-4">
+                
                 <!-- Change Password Form -->
                 <h5 class="mb-3">Change Password</h5>
                 <form method="POST" action="{{ url_for('auth.change_password') }}">
@@ -103,4 +151,17 @@
         </div>
     </div>
 </div>
+
+<script>
+    function updateAvatarPreview(style) {
+        fetch(`/themes/api/avatar_preview/${style}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('avatar-preview').src = data.preview_url;
+            })
+            .catch(error => console.error('Error fetching avatar preview:', error));
+    }
+    // Initialize preview on page load
+    window.onload = () => updateAvatarPreview('{{ avatar_form.avatar_style.data }}');
+</script>
 {% endblock %}
