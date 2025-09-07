@@ -1,22 +1,38 @@
-/* Custom styles for Nook & Hook */
-
+/* Custom Variables */
 :root {
     --nook-color: #198754;
     --hook-color: #0dcaf0;
     --primary-color: #0d6efd;
+    --high-contrast-bg-light: #ffffff;
+    --high-contrast-text-light: #000000;
+    --high-contrast-bg-dark: #121212;
+    --high-contrast-text-dark: #f5f5f5;
 }
 
 /* General Styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--high-contrast-bg-light);
+    color: var(--high-contrast-text-light);
 }
 
 .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 350px;
     transition: transform 0.2s ease-in-out;
 }
 
 .card:hover {
     transform: translateY(-2px);
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
 }
 
 /* Timer Styles */
@@ -46,23 +62,31 @@ body {
 
 /* Theme Styles */
 [data-bs-theme="dark"] {
-    --bs-body-bg: #1a1a1a;
-    --bs-body-color: #ffffff;
+    --bs-body-bg: var(--high-contrast-bg-dark);
+    --bs-body-color: var(--high-contrast-text-dark);
 }
 
-/* Responsive Timer */
+/* Responsive Design */
 @media (max-width: 768px) {
     .timer-display {
         font-size: 2.5rem;
     }
-    
     .timer-controls .btn {
         min-width: 100px;
         margin: 0.25rem;
     }
 }
 
-/* Animation for timer */
+@media (min-width: 1200px) {
+    .book-grid .card {
+        max-width: 300px;
+    }
+    .timer-display {
+        font-size: 5rem;
+    }
+}
+
+/* Animation for Timer */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
@@ -73,7 +97,7 @@ body {
     animation: pulse 2s infinite;
 }
 
-/* Custom button styles */
+/* Button Styles */
 .btn-nook {
     background-color: var(--nook-color);
     border-color: var(--nook-color);
@@ -98,7 +122,6 @@ body {
     color: black;
 }
 
-/* Login and Register button styles */
 .btn-login, .btn-register {
     background-color: var(--primary-color);
     color: white;
@@ -115,20 +138,32 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* Stats cards */
+.btn-login:focus, .btn-register:focus, .btn-nook:focus, .btn-hook:focus, .quick-actions.btn:focus {
+    outline: 3px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+.card-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+}
+
+/* Stats Cards */
 .stats-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
 }
 
-/* Loading spinner */
+/* Loading Spinner */
 .spinner-border-sm {
     width: 1rem;
     height: 1rem;
 }
 
-/* Toast notifications */
+/* Toast Notifications */
 .toast-container {
     position: fixed;
     top: 20px;
@@ -136,7 +171,7 @@ body {
     z-index: 1050;
 }
 
-/* Book grid improvements */
+/* Book Grid Improvements */
 .book-grid .card {
     height: 100%;
 }
@@ -146,7 +181,7 @@ body {
     object-fit: cover;
 }
 
-/* Timer themes */
+/* Timer Themes */
 .timer-theme-light {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
@@ -169,7 +204,7 @@ body {
     background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
 }
 
-/* PWA styles */
+/* PWA Styles */
 .install-prompt {
     position: fixed;
     bottom: 20px;
@@ -178,7 +213,7 @@ body {
     z-index: 1000;
 }
 
-/* Offline indicator */
+/* Offline Indicator */
 .offline-indicator {
     position: fixed;
     top: 0;
@@ -196,20 +231,18 @@ body {
     display: block;
 }
 
-.nook-card:hover {
+/* Card Hover Effects */
+.nook-card:hover, .hook-card:hover {
     transform: translateY(-5px);
     transition: transform 0.3s ease;
 }
 
-.hook-card:hover {
-    transform: translateY(-5px);
-    transition: transform 0.3s ease;
-}
-
+/* Typography */
 .display-1 {
     font-size: 4rem;
 }
 
+/* Quick Action Buttons */
 .quick-actions.btn {
     background: white;
     border: 1px solid #ccc;
@@ -233,7 +266,7 @@ body {
     border-color: transparent;
 }
 
-/* Optional: Color-specific hovers */
+/* Outline Button Hovers */
 .btn-outline-primary:hover {
     background-color: #0d6efd;
     color: white !important;
@@ -249,16 +282,9 @@ body {
     color: white !important;
 }
 
-.card-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: auto;
-}
-
 .card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 300px;
+  background-color: transparent!important;
+  box-shadow: none!important;
+  border: 1px solid #ddd;
+  color: inherit;
 }
