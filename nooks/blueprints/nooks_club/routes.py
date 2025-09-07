@@ -18,6 +18,7 @@ class ClubForm(FlaskForm):
     name = StringField('Club Name', validators=[DataRequired(), Length(min=3, max=100)])
     description = TextAreaField('Description', validators=[Length(max=500)])
     submit = SubmitField('Create')
+
 # --- Helper: Check if user is club admin/moderator ---
 def is_club_admin(club, user_id):
     return str(user_id) in [str(a) for a in club.get('admins', [])]
@@ -33,6 +34,30 @@ def index():
         flash("An error occurred while loading clubs. Please try again.", "danger")
         return redirect(url_for('general.home'))
 
+@nooks_club_bp.route('/my_clubs')
+@login_required
+def my_clubs():
+    try:
+        logger.info(f"User {current_user.id} accessing their joined clubs")
+        clubs = ClubModel.get_user_clubs(str(current_user.id))
+        return render_template('nooks_club/my_clubs.html', clubs=clubs)
+    except Exception as e:
+        logger.error(f"Error fetching joined clubs for user {current_user.id}: {str(e)}", exc_info=True)
+        flash("An error occurred while loading your clubs. Please try again.", "danger")
+        return redirect(url_for('nooks_club.index'))
+
+@nooks_club_bp.route('/created_clubs')
+@login_required
+def created_clubs():
+    try:
+        logger.info(f"User {current_user.id} accessing their created clubs")
+        clubs = ClubModel.get_created_clubs(str(current_user.id))
+        return render_template('nooks_club/created_clubs.html', clubs=clubs)
+    except Exception as e:
+        logger.error(f"Error fetching created clubs for user {current_user.id}: {str(e)}", exc_info=True)
+        flash("An error occurred while loading your created clubs. Please try again.", "danger")
+        return redirect(url_for('nooks_club.index'))
+
 @nooks_club_bp.route('/club/<club_id>')
 @login_required
 def view_club(club_id):
@@ -42,7 +67,9 @@ def view_club(club_id):
         if not club:
             flash("Club not found.", "danger")
             return redirect(url_for('nooks_club.index'))
-        return render_template('nooks_club/club_detail.html', club_id=club_id)
+        is_admin = is_club_admin(club, current_user.id)
+        is_member = str(current_user.id) in [str(m) for m in club.get('members', [])]
+        return render_template('nooks_club/club_detail.html', club=club, club_id=club_id, is_admin=is_admin, is_member=is_member)
     except Exception as e:
         logger.error(f"Error accessing club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -65,16 +92,16 @@ def join_club(club_id):
 @login_required
 def create_club():
     try:
-        form = ClubForm()  # Instantiate the form
-        if form.validate_on_submit():  # Check if the form is submitted and valid
+        form = ClubForm()
+        if form.validate_on_submit():
             name = form.name.data
             description = form.description.data
-            topic = request.form.get('topic', '')  # Keep topic as optional
+            topic = request.form.get('topic', '')
             logger.info(f"User {current_user.id} creating club: {name}")
             ClubModel.create_club(name, description, topic, str(current_user.id))
             flash('Club created successfully!', 'success')
-            return redirect(url_for('nooks_club.index'))
-        return render_template('nooks_club/create_club.html', form=form)  # Pass form to template
+            return redirect(url_for('nooks_club.created_clubs'))
+        return render_template('nooks_club/create_club.html', form=form)
     except Exception as e:
         logger.error(f"Error creating club for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -99,7 +126,12 @@ def create_post(club_id):
 def club_chat(club_id):
     try:
         logger.info(f"User {current_user.id} accessing chat for club {club_id}")
-        return render_template('nooks_club/chat.html', club_id=club_id)
+        club = ClubModel.get_club(club_id)
+        if not club:
+            flash("Club not found.", "danger")
+            return redirect(url_for('nooks_club.index'))
+        is_admin = is_club_admin(club, current_user.id)
+        return render_template('nooks_club/chat.html', club_id=club_id, is_admin=is_admin)
     except Exception as e:
         logger.error(f"Error accessing chat for club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -117,6 +149,7 @@ def api_get_clubs():
             c['_id'] = str(c['_id'])
             c['creator_id'] = str(c['creator_id'])
             c['members'] = [str(m) for m in c.get('members', [])]
+            c['is_admin'] = is_club_admin(c, current_user.id)
         return jsonify({'clubs': clubs})
     except Exception as e:
         logger.error(f"Error fetching clubs for user {current_user.id}: {str(e)}", exc_info=True)
@@ -148,6 +181,7 @@ def api_get_club(club_id):
         club['_id'] = str(club['_id'])
         club['creator_id'] = str(club['creator_id'])
         club['members'] = [str(m) for m in club.get('members', [])]
+        club['is_admin'] = is_club_admin(club, current_user.id)
         return jsonify(club)
     except Exception as e:
         logger.error(f"Error fetching club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
@@ -300,6 +334,38 @@ def api_remove_club_admin(club_id, user_id):
         return jsonify({'message': 'User demoted from admin'})
     except Exception as e:
         logger.error(f"Error demoting admin {user_id} in club {club_id} for user {current_user.id}: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred'}), 500
+
+@nooks_club_bp.route('/api/my_clubs', methods=['GET'])
+@login_required
+def api_my_clubs():
+    try:
+        logger.info(f"User {current_user.id} fetching their joined clubs")
+        clubs = ClubModel.get_user_clubs(str(current_user.id))
+        for c in clubs:
+            c['_id'] = str(c['_id'])
+            c['creator_id'] = str(c['creator_id'])
+            c['members'] = [str(m) for m in c.get('members', [])]
+            c['is_admin'] = is_club_admin(c, current_user.id)
+        return jsonify({'clubs': clubs})
+    except Exception as e:
+        logger.error(f"Error fetching joined clubs for user {current_user.id}: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred'}), 500
+
+@nooks_club_bp.route('/api/created_clubs', methods=['GET'])
+@login_required
+def api_created_clubs():
+    try:
+        logger.info(f"User {current_user.id} fetching their created clubs")
+        clubs = ClubModel.get_created_clubs(str(current_user.id))
+        for c in clubs:
+            c['_id'] = str(c['_id'])
+            c['creator_id'] = str(c['creator_id'])
+            c['members'] = [str(m) for m in c.get('members', [])]
+            c['is_admin'] = is_club_admin(c, current_user.id)
+        return jsonify({'clubs': clubs})
+    except Exception as e:
+        logger.error(f"Error fetching created clubs for user {current_user.id}: {str(e)}", exc_info=True)
         return jsonify({'error': 'An error occurred'}), 500
 
 @nooks_club_bp.route('/api/flashcards', methods=['GET'])
