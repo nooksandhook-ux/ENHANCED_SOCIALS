@@ -39,8 +39,8 @@ def create_app():
     app = Flask(__name__)
     
     # Configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-    app.config['MONGO_URI'] = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/nook_hook_app')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = True  # Enable for HTTPS in production
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
