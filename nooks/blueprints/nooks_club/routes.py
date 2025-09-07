@@ -3,7 +3,10 @@ from flask_login import login_required, current_user
 from bson import ObjectId
 from datetime import datetime, timedelta
 import logging
-from models import QuizQuestionModel
+from models import QuizQuestionModel, ClubModel, ClubPostModel, ClubChatMessageModel, FlashcardModel, QuizAnswerModel, UserProgressModel
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired, Length
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 nooks_club_bp = Blueprint('nooks_club', __name__)
 
+class ClubForm(FlaskForm):
+    name = StringField('Club Name', validators=[DataRequired(), Length(min=3, max=100)])
+    description = TextAreaField('Description', validators=[Length(max=500)])
+    submit = SubmitField('Create')
 # --- Helper: Check if user is club admin/moderator ---
 def is_club_admin(club, user_id):
     return str(user_id) in [str(a) for a in club.get('admins', [])]
@@ -58,15 +65,16 @@ def join_club(club_id):
 @login_required
 def create_club():
     try:
-        if request.method == 'POST':
-            name = request.form.get('name')
-            description = request.form.get('description')
-            topic = request.form.get('topic', '')
+        form = ClubForm()  # Instantiate the form
+        if form.validate_on_submit():  # Check if the form is submitted and valid
+            name = form.name.data
+            description = form.description.data
+            topic = request.form.get('topic', '')  # Keep topic as optional
             logger.info(f"User {current_user.id} creating club: {name}")
             ClubModel.create_club(name, description, topic, str(current_user.id))
             flash('Club created successfully!', 'success')
             return redirect(url_for('nooks_club.index'))
-        return render_template('nooks_club/create_club.html')
+        return render_template('nooks_club/create_club.html', form=form)  # Pass form to template
     except Exception as e:
         logger.error(f"Error creating club for user {current_user.id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -459,11 +467,7 @@ def api_finish_quiz():
 def get_question_by_id(question_id):
     try:
         return current_app.mongo.db.quiz_questions.find_one({'_id': ObjectId(question_id)})
-    except Exception:
+    except Exception as e:
         logger.error(f"Error fetching question {question_id}: {str(e)}", exc_info=True)
         return None
 QuizQuestionModel.get_question_by_id = staticmethod(get_question_by_id)
-
-
-
-
