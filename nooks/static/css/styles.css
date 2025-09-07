@@ -105,27 +105,23 @@ footer {
     height: 100%;
 }
 
-/* Wrapper container for the cards, ensuring baseline alignment */
-.cards-container {
+/* Wrapper container for the cards, ensuring equal height and baseline alignment */
+.cards-container .row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end; /* aligns the bottom of cards so buttons align horizontally */
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    align-items: stretch; /* Makes all cards match the tallest card's height */
 }
 
-/* Responsive adjustment for cards-container */
-@media (max-width: 768px) {
-    .cards-container {
-        display: block; /* revert to Bootstrap grid on small screens */
-    }
+.cards-container .card {
+    height: 100%; /* Ensures cards stretch to fill the row */
 }
 
-/* Align all cards buttons horizontally on same line */
+/* Align all cards buttons at the bottom */
 .card-buttons {
     display: flex !important;
-    flex-direction: column; /* stack buttons vertically inside each card */
+    flex-direction: column; /* Stack buttons vertically inside each card */
     gap: 0.5rem !important;
-    margin-top: 1rem !important;
+    margin-top: auto !important; /* Pushes buttons to the bottom of card-body */
 }
 
 .card-buttons .btn {
@@ -209,6 +205,9 @@ footer {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .cards-container .row {
+        display: block; /* Revert to Bootstrap grid on small screens */
+    }
     .timer-display {
         font-size: 2.5rem;
     }
