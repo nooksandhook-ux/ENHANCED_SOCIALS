@@ -1,40 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask_login import login_required, current_user
 from bson import ObjectId
-from flask_login import login_required
 from datetime import datetime, timedelta
 from utils.decorators import admin_required
-from blueprints.rewards.services import RewardService
-from models import AdminUtils, UserModel, ActivityLogger
-
-admin_bp = Blueprint('admin', __name__, template_folder='templates')
-
-@admin_bp.route('/books')
-@admin_required
-def books():
-    q = request.args.get('q', '').strip()
-    status = request.args.get('status', '').strip()
-    query = {'pdf_path': {'$ne': None}}
-    if q:
-        query['$or'] = [
-            {'title': {'$regex': q, '$options': 'i'}},
-            {'authors': {'$elemMatch': {'$regex': q, '$options': 'i'}}},
-            {'user_email': {'$regex': q, '$options': 'i'}},
-            {'user_id': {'$regex': q, '$options': 'i'}}
-        ]
-    if status:
-        query['status'] = status
-    books = list(current_app.mongo.db.books.find(query).sort('added_at', -1))
-    # Attach user email if possible
-    user_ids = list(set([b['user_id'] for b in books if 'user_id' in b]))
-    users = {str(u['_id']): u for u in current_app.mongo.db.users.find({'_id': {'$in': user_ids}})}
-    for b in books:
-        uid = str(b.get('user_id'))
-        b['user_email'] = users.get(uid, {}).get('email', uid)
-    return render_template('admin/books.html', books=books)
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
-from bson import ObjectId
-from datetime import datetime, timedelta
-from utils.decorators import login_required, admin_required
 from blueprints.rewards.services import RewardService
 from models import AdminUtils, UserModel, ActivityLogger
 
@@ -467,6 +435,30 @@ def export_data():
     flash('Data export functionality would be implemented here', 'info')
     return redirect(url_for('admin.index'))
 
+@admin_bp.route('/books')
+@admin_required
+def books():
+    q = request.args.get('q', '').strip()
+    status = request.args.get('status', '').strip()
+    query = {'pdf_path': {'$ne': None}}
+    if q:
+        query['$or'] = [
+            {'title': {'$regex': q, '$options': 'i'}},
+            {'authors': {'$elemMatch': {'$regex': q, '$options': 'i'}}},
+            {'user_email': {'$regex': q, '$options': 'i'}},
+            {'user_id': {'$regex': q, '$options': 'i'}}
+        ]
+    if status:
+        query['status'] = status
+    books = list(current_app.mongo.db.books.find(query).sort('added_at', -1))
+    # Attach user email if possible
+    user_ids = list(set([b['user_id'] for b in books if 'user_id' in b]))
+    users = {str(u['_id']): u for u in current_app.mongo.db.users.find({'_id': {'$in': user_ids}})}
+    for b in books:
+        uid = str(b.get('user_id'))
+        b['user_email'] = users.get(uid, {}).get('email', uid)
+    return render_template('admin/books.html', books=books)
+
 # Helper functions
 
 def get_active_users_today():
@@ -783,8 +775,4 @@ def get_system_configuration():
             'admin_panel': True,
             'pwa_support': True
         }
-
     }
-
-
-
