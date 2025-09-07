@@ -182,8 +182,9 @@ footer {
 }
 
 .quick-actions.btn:hover {
-    background: #f8f9fa;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    background: var(--primary-color);
+    color: white!important
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.5);
     transform: translateY(-5px);
     border-color: transparent;
 }
@@ -400,5 +401,6 @@ footer {
     background-color: #ffc107;
     color: black !important;
 }
+
 
 
