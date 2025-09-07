@@ -44,7 +44,7 @@ footer {
     text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.15);
     transition: transform 0.2s ease-in-out;
     min-height: auto;
-    padding: 1.5rem; /* Increased padding to balance removed footer */
+    padding: 1.5rem; 
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -139,7 +139,8 @@ footer {
 
 .card-buttons .btn {
     width: auto;
-    min-width: 140px;
+    min-width: 160px;
+    width: auto;
     white-space: nowrap;
     text-align: center;
     margin: 0;
@@ -399,4 +400,5 @@ footer {
     background-color: #ffc107;
     color: black !important;
 }
+
 
