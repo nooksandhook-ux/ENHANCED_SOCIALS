@@ -21,11 +21,20 @@ def index():
     available_themes = get_available_themes()
     available_avatars = get_available_avatars()
     
+    # Get purchased themes
+    purchased_items = current_app.mongo.db.user_purchases.find({
+        'user_id': user_id,
+        'type': 'theme',
+        'is_active': True
+    })
+    purchased_themes = [p['item_id'].replace('theme_', '') for p in purchased_items]
+    
     return render_template('themes/index.html',
                          themes=available_themes,
                          current_theme=current_theme,
                          avatars=available_avatars,
-                         current_avatar=current_avatar)
+                         current_avatar=current_avatar,
+                         purchased_themes=purchased_themes)
 
 @themes_bp.route('/set_theme', methods=['POST'])
 @login_required
@@ -33,10 +42,22 @@ def set_theme():
     user_id = ObjectId(current_user.id)
     theme_name = request.form['theme']
     
+    # Handle theme_ prefix for purchased themes
+    if theme_name.startswith('theme_'):
+        theme_name = theme_name.replace('theme_', '')
+    
     # Validate theme
     available_themes = get_available_themes()
     if theme_name not in [theme['name'] for theme in available_themes]:
         flash('Invalid theme selected', 'error')
+        return redirect(url_for('themes.index'))
+    
+    # Check if theme is purchased or free
+    purchased_themes = [p['item_id'].replace('theme_', '') for p in current_app.mongo.db.user_purchases.find({
+        'user_id': user_id, 'type': 'theme', 'is_active': True
+    })]
+    if theme_name not in purchased_themes and theme_name not in ['light', 'dark', 'retro', 'neon', 'anime']:
+        flash('This theme requires purchase', 'error')
         return redirect(url_for('themes.index'))
     
     # Update user preferences
@@ -67,9 +88,26 @@ def save_customization():
     user = current_app.mongo.db.users.find_one({'_id': user_id})
     preferences = user.get('preferences', {})
     
+    # Handle theme_ prefix for purchased themes
+    theme_name = request.form.get('theme', 'light')
+    if theme_name.startswith('theme_'):
+        theme_name = theme_name.replace('theme_', '')
+    
+    # Validate theme
+    available_themes = get_available_themes()
+    purchased_themes = [p['item_id'].replace('theme_', '') for p in current_app.mongo.db.user_purchases.find({
+        'user_id': user_id, 'type': 'theme', 'is_active': True
+    })]
+    if theme_name not in [theme['name'] for theme in available_themes]:
+        flash('Invalid theme selected', 'error')
+        return redirect(url_for('themes.customize'))
+    if theme_name not in purchased_themes and theme_name not in ['light', 'dark', 'retro', 'neon', 'anime']:
+        flash('This theme requires purchase', 'error')
+        return redirect(url_for('themes.customize'))
+    
     # Update preferences from form
     preferences.update({
-        'theme': request.form.get('theme', 'light'),
+        'theme': theme_name,
         'timer_sound': 'timer_sound' in request.form,
         'notifications': 'notifications' in request.form,
         'animations': 'animations' in request.form,
@@ -190,11 +228,14 @@ def customize_avatar():
         avatar_options = {
             'hair': request.form.getlist('hair[]'),  # Multiple hair options
             'backgroundColor': request.form.getlist('backgroundColor[]'),  # Multiple colors
-            'flip': request.form.get('flip') == 'true'
+            'flip': request.form.get('flip') == 'on'
         }
         
         # Validate options
-        avatar_options = validate_avatar_options(avatar_options, current_avatar['style'])
+        is_valid, error = validate_avatar_options(current_avatar['style'], avatar_options)
+        if not is_valid:
+            flash(f"Invalid avatar options: {error}", 'error')
+            return redirect(url_for('themes.customize_avatar'))
         
         # Update user preferences
         current_app.mongo.db.users.update_one(
@@ -546,7 +587,6 @@ def get_free_avatar_styles():
 
 def get_avatar_customization_options(style):
     """Get customization options for a specific avatar style"""
-    # Simplified options; extend based on DiceBear documentation
     options = {
         'avataaars': {
             'hair': ['short01', 'short02', 'long01', 'long02', 'none'],
@@ -627,7 +667,7 @@ def validate_preferences(preferences):
     
     return validated
 
-def validate_avatar_options(options, style):
+def validate_avatar_options(style, options):
     """Validate and sanitize avatar customization options"""
     valid_options = get_avatar_customization_options(style)
     validated = {}
@@ -654,4 +694,4 @@ def validate_avatar_options(options, style):
     if 'flip' in options and 'flip' in valid_options:
         validated['flip'] = bool(options['flip'])
     
-    return validated
+    return validated, None if validated else ("Invalid options", 400)
