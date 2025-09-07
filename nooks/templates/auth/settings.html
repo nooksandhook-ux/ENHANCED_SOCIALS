@@ -133,8 +133,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mb-3 text-center">
+                    <div class="mb-3 text-center position-relative">
                         <img id="avatar-preview" src="" alt="Avatar Preview" class="border rounded" style="width: 100px; height: 100px;">
+                        <div id="avatar-loading" class="spinner-border spinner-border-sm text-primary position-absolute" style="display: none; top: 50%; left: 50%; transform: translate(-50%, -50%);" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                     </div>
                     <div class="d-grid">
                         {{ avatar_form.submit(class="btn btn-primary", id="avatar-submit", disabled=true) }}
@@ -150,6 +153,7 @@
                     <div class="mb-3">
                         <label for="current_password" class="form-label">Current Password</label>
                         {{ change_password_form.current_password(class="form-control", id="current_password") }}
+                        <div id="current_password_error" class="invalid-feedback d-block" style="display: none;"></div>
                         {% for error in change_password_form.current_password.errors %}
                             <div class="invalid-feedback d-block">{{ error }}</div>
                         {% endfor %}
@@ -159,6 +163,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="new_password" class="form-label">New Password</label>
                             {{ change_password_form.new_password(class="form-control", id="new_password") }}
+                            <div id="new_password_error" class="invalid-feedback d-block" style="display: none;"></div>
                             {% for error in change_password_form.new_password.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
@@ -167,6 +172,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="confirm_password" class="form-label">Confirm New Password</label>
                             {{ change_password_form.confirm_password(class="form-control", id="confirm_password") }}
+                            <div id="confirm_password_error" class="invalid-feedback d-block" style="display: none;"></div>
                             {% for error in change_password_form.confirm_password.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
@@ -183,12 +189,37 @@
 </div>
 
 <script>
+    // Debounce function to limit the rate of function execution
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    function showLoadingSpinner() {
+        document.getElementById('avatar-loading').style.display = 'block';
+        document.getElementById('avatar-preview').style.opacity = '0.5';
+    }
+
+    function hideLoadingSpinner() {
+        document.getElementById('avatar-loading').style.display = 'none';
+        document.getElementById('avatar-preview').style.opacity = '1';
+    }
+
     function updateAvatarOptions(style) {
+        showLoadingSpinner();
         fetch(`/themes/api/avatar_customization_options/${style}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
                     console.error('Error fetching avatar options:', data.error);
+                    hideLoadingSpinner();
                     return;
                 }
                 const hairSelect = document.querySelector('#hair');
@@ -197,18 +228,74 @@
                 bgSelect.innerHTML = data.backgroundColor.map(opt => `<option value="${opt}">${opt}</option>`).join('');
                 updateAvatarPreview(style);
             })
-            .catch(error => console.error('Error fetching avatar options:', error));
+            .catch(error => {
+                console.error('Error fetching avatar options:', error);
+                hideLoadingSpinner();
+            });
     }
 
+    // Debounced version of updateAvatarOptions
+    const debouncedUpdateAvatarOptions = debounce(updateAvatarOptions, 300);
+
     function updateAvatarPreview(style) {
+        showLoadingSpinner();
         fetch(`/themes/api/avatar_preview/${style}`)
             .then(response => response.json())
             .then(data => {
                 if (data.avatar_url) {
                     document.getElementById('avatar-preview').src = data.avatar_url;
                 }
+                hideLoadingSpinner();
             })
-            .catch(error => console.error('Error fetching avatar preview:', error));
+            .catch(error => {
+                console.error('Error fetching avatar preview:', error);
+                hideLoadingSpinner();
+            });
+    }
+
+    // Real-time password validation
+    function validatePasswordFields() {
+        const currentPassword = document.getElementById('current_password').value;
+        const newPassword = document.getElementById('new_password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        const submitBtn = document.getElementById('password-submit');
+
+        // Clear previous error messages
+        document.getElementById('current_password_error').style.display = 'none';
+        document.getElementById('new_password_error').style.display = 'none';
+        document.getElementById('confirm_password_error').style.display = 'none';
+
+        let hasErrors = false;
+
+        if (currentPassword || newPassword || confirmPassword) {
+            if (!currentPassword) {
+                document.getElementById('current_password_error').textContent = 'Current password is required';
+                document.getElementById('current_password_error').style.display = 'block';
+                hasErrors = true;
+            }
+            if (newPassword && newPassword.length < 6) {
+                document.getElementById('new_password_error').textContent = 'New password must be at least 6 characters';
+                document.getElementById('new_password_error').style.display = 'block';
+                hasErrors = true;
+            }
+            if (newPassword && !confirmPassword) {
+                document.getElementById('confirm_password_error').textContent = 'Please confirm your new password';
+                document.getElementById('confirm_password_error').style.display = 'block';
+                hasErrors = true;
+            }
+            if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+                document.getElementById('confirm_password_error').textContent = 'Passwords do not match';
+                document.getElementById('confirm_password_error').style.display = 'block';
+                hasErrors = true;
+            }
+            if (!newPassword && confirmPassword) {
+                document.getElementById('new_password_error').textContent = 'Please enter a new password';
+                document.getElementById('new_password_error').style.display = 'block';
+                hasErrors = true;
+            }
+        }
+
+        submitBtn.disabled = hasErrors || (!currentPassword && !newPassword && !confirmPassword);
     }
 
     // Client-side validation to enable/disable submit buttons
@@ -221,21 +308,61 @@
         inputs.forEach(input => {
             input.addEventListener('change', () => {
                 hasChanges = true;
-                submitBtn.disabled = false;
+                if (formId !== 'password-form') {
+                    submitBtn.disabled = false;
+                }
             });
+            if (formId === 'password-form') {
+                input.addEventListener('input', validatePasswordFields);
+            }
         });
 
         form.addEventListener('submit', (e) => {
             if (!hasChanges) {
                 e.preventDefault();
                 alert('No changes detected. Please modify at least one field.');
-            } else if (formId === 'password-form') {
+                return;
+            }
+            if (formId === 'password-form') {
                 const currentPassword = document.getElementById('current_password').value;
                 const newPassword = document.getElementById('new_password').value;
                 const confirmPassword = document.getElementById('confirm_password').value;
-                if (!currentPassword || (!newPassword && confirmPassword) || (newPassword && !confirmPassword)) {
+                
+                // Clear previous error messages
+                document.getElementById('current_password_error').style.display = 'none';
+                document.getElementById('new_password_error').style.display = 'none';
+                document.getElementById('confirm_password_error').style.display = 'none';
+
+                let hasErrors = false;
+
+                if (!currentPassword) {
+                    document.getElementById('current_password_error').textContent = 'Current password is required';
+                    document.getElementById('current_password_error').style.display = 'block';
+                    hasErrors = true;
+                }
+                if (newPassword && newPassword.length < 6) {
+                    document.getElementById('new_password_error').textContent = 'New password must be at least 6 characters';
+                    document.getElementById('new_password_error').style.display = 'block';
+                    hasErrors = true;
+                }
+                if (newPassword && !confirmPassword) {
+                    document.getElementById('confirm_password_error').textContent = 'Please confirm your new password';
+                    document.getElementById('confirm_password_error').style.display = 'block';
+                    hasErrors = true;
+                }
+                if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+                    document.getElementById('confirm_password_error').textContent = 'Passwords do not match';
+                    document.getElementById('confirm_password_error').style.display = 'block';
+                    hasErrors = true;
+                }
+                if (!newPassword && confirmPassword) {
+                    document.getElementById('new_password_error').textContent = 'Please enter a new password';
+                    document.getElementById('new_password_error').style.display = 'block';
+                    hasErrors = true;
+                }
+
+                if (hasErrors) {
                     e.preventDefault();
-                    alert('Please fill out all password fields or leave them all empty.');
                 }
             }
         });
@@ -247,7 +374,7 @@
     monitorFormChanges('password-form', 'password-submit');
 
     // Initialize avatar options and preview
-    document.querySelector('#avatar_style').addEventListener('change', (e) => updateAvatarOptions(e.target.value));
-    window.onload = () => updateAvatarOptions('{{ avatar_form.avatar_style.data }}');
+    document.querySelector('#avatar_style').addEventListener('change', (e) => debouncedUpdateAvatarOptions(e.target.value));
+    window.onload = () => debouncedUpdateAvatarOptions('{{ avatar_form.avatar_style.data }}');
 </script>
 {% endblock %}
