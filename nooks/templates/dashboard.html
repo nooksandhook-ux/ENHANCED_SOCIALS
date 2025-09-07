@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Nooks {% endblock %}
+{% block title %}Dashboard - Nooks{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -17,127 +17,137 @@
 </div>
 
 <!-- Overview Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body text-center">
-                <i class="bi bi-book display-4 mb-2"></i>
-                <h3 class="fw-bold">{{ books | length }}</h3>
-                <p class="mb-0">Total Books</p>
+<div class="cards-container">
+    <div class="row g-0 mb-4">
+        <div class="col-md-3">
+            <div class="card nook-card text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-book display-4 mb-2"></i>
+                    <h3 class="fw-bold">{{ books | length }}</h3>
+                    <p class="mb-0">Total Books</p>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body text-center">
-                <i class="bi bi-check-circle display-4 mb-2"></i>
-                <h3 class="fw-bold">{{ tasks | length }}</h3>
-                <p class="mb-0">Completed Tasks</p>
+        <div class="col-md-3">
+            <div class="card hook-card text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle display-4 mb-2"></i>
+                    <h3 class="fw-bold">{{ tasks | length }}</h3>
+                    <p class="mb-0">Completed Tasks</p>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body text-center">
-                <i class="bi bi-fire display-4 mb-2"></i>
-                <h3 class="fw-bold">{{ reading_streak }}</h3>
-                <p class="mb-0">Reading Streak</p>
+        <div class="col-md-3">
+            <div class="card streak-card text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-fire display-4 mb-2"></i>
+                    <h3 class="fw-bold">{{ reading_streak }}</h3>
+                    <p class="mb-0">Reading Streak</p>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body text-center">
-                <i class="bi bi-lightning display-4 mb-2"></i>
-                <h3 class="fw-bold">{{ task_streak }}</h3>
-                <p class="mb-0">Task Streak</p>
+        <div class="col-md-3">
+            <div class="card task-card text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-lightning display-4 mb-2"></i>
+                    <h3 class="fw-bold">{{ task_streak }}</h3>
+                    <p class="mb-0">Task Streak</p>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Charts Row -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Reading Progress</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="readingChart" width="400" height="200"></canvas>
+<div class="cards-container">
+    <div class="row g-0 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Reading Progress</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="readingChart" width="400" height="200"></canvas>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Task Analytics</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="taskChart" width="400" height="200"></canvas>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Task Analytics</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="taskChart" width="400" height="200"></canvas>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Recent Activity -->
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Recent Books</h5>
-                <a href="{{ url_for('nook.index') }}" class="btn btn-sm btn-outline-success">View All</a>
-            </div>
-            <div class="card-body">
-                {% if books %}
-                    <div class="list-group list-group-flush">
-                        {% for book in books[:5] %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1 fw-bold">{{ book.title[:40] }}{% if book.title|length > 40 %}...{% endif %}</h6>
-                                <small class="text-muted">by {{ book.authors | join(', ') }}</small>
-                            </div>
-                            <span class="badge 
-                                {% if book.status == 'reading' %}bg-warning
-                                {% elif book.status == 'finished' %}bg-success
-                                {% else %}bg-secondary{% endif %}">
-                                {{ book.status.title() }}
-                            </span>
-                        </div>
-                        {% endfor %}
+<div class="cards-container">
+    <div class="row g-0">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Books</h5>
+                    <div class="card-buttons">
+                        <a href="{{ url_for('nook.index') }}" class="btn btn-sm btn-outline-success">
+                            <span>View All</span>
+                        </a>
                     </div>
-                {% else %}
-                    <p class="text-muted text-center">No books added yet</p>
-                {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if books %}
+                        <div class="list-group list-group-flush">
+                            {% for book in books[:5] %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1 fw-bold">{{ book.title[:40] }}{% if book.title|length > 40 %}...{% endif %}</h6>
+                                    <small class="text-muted">by {{ book.authors | join(', ') }}</small>
+                                </div>
+                                <span class="badge 
+                                    {% if book.status == 'reading' %}bg-warning
+                                    {% elif book.status == 'finished' %}bg-success
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ book.status.title() }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No books added yet</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Recent Rewards</h5>
-                <small class="text-muted">Points earned</small>
-            </div>
-            <div class="card-body">
-                {% if rewards %}
-                    <div class="list-group list-group-flush">
-                        {% for reward in rewards %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">{{ reward.description }}</h6>
-                                <small class="text-muted">
-                                    <i class="bi bi-{{ 'book' if reward.source == 'nook' else 'stopwatch' }} me-1"></i>
-                                    {{ reward.source.title() }} • {{ reward.date.strftime('%m/%d %H:%M') }}
-                                </small>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Rewards</h5>
+                    <small class="text-muted">Points earned</small>
+                </div>
+                <div class="card-body">
+                    {% if rewards %}
+                        <div class="list-group list-group-flush">
+                            {% for reward in rewards %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ reward.description }}</h6>
+                                    <small class="text-muted">
+                                        <i class="bi bi-{{ 'book' if reward.source == 'nook' else 'stopwatch' }} me-1"></i>
+                                        {{ reward.source.title() }} • {{ reward.date.strftime('%m/%d %H:%M') }}
+                                    </small>
+                                </div>
+                                <span class="badge bg-primary">+{{ reward.points }}</span>
                             </div>
-                            <span class="badge bg-primary">+{{ reward.points }}</span>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-muted text-center">No rewards yet</p>
-                {% endif %}
+                    {% else %}
+                        <p class="text-muted text-center">No rewards yet</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
