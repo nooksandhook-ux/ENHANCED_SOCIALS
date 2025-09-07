@@ -40,6 +40,30 @@
 </div>
 {% block extra_scripts %}
 {% if is_member %}
+<style>
+.admin-actions {
+  position: relative;
+}
+.admin-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  white-space: nowrap;
+  z-index: 1000;
+  display: none;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 4px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.admin-menu.show {
+  display: block;
+}
+.admin-menu.right-adjust {
+  left: auto;
+  right: 0;
+}
+</style>
 <script>
 function loadPosts() {
   fetch('{{ url_for("nooks_club.api_get_club_posts", club_id=club_id) }}')
@@ -53,20 +77,21 @@ function loadPosts() {
           card.className = 'card mb-2 position-relative';
           card.innerHTML = `
             <div class="card-body">
-              <p class="card-text">${post.content}</p>
-              <p class="card-text"><small class="text-muted">Posted by: ${post.username}</small></p>
-              {% if is_admin %}
               <div class="admin-actions">
+                <p class="card-text">${post.content}</p>
+                <p class="card-text"><small class="text-muted">Posted by: ${post.username}</small></p>
+                {% if is_admin %}
                 <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
                 <div class="admin-menu">
                   <button class="btn btn-danger btn-sm" onclick="deletePost('${post._id}')">Delete</button>
                 </div>
+                {% endif %}
               </div>
-              {% endif %}
             </div>
           `;
           postList.appendChild(card);
         });
+        adjustAdminMenus();
       }
     })
     .catch(error => console.error('Error fetching posts:', error));
@@ -103,8 +128,8 @@ function loadAdmins() {
           card.className = 'card mb-2 position-relative';
           card.innerHTML = `
             <div class="card-body">
-              <p class="card-text">Admin: ${username}</p>
               <div class="admin-actions">
+                <p class="card-text">Admin: ${username}</p>
                 <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
                 <div class="admin-menu">
                   <button class="btn btn-danger btn-sm" onclick="removeAdmin('${adminId}')">Remove Admin</button>
@@ -114,6 +139,7 @@ function loadAdmins() {
           `;
           adminList.appendChild(card);
         });
+        adjustAdminMenus();
       }
     })
     .catch(error => console.error('Error fetching admins:', error));
@@ -169,7 +195,45 @@ document.getElementById('add-admin-form').addEventListener('submit', (e) => {
 });
 document.addEventListener('DOMContentLoaded', loadAdmins);
 {% endif %}
-document.addEventListener('DOMContentLoaded', loadPosts);
+
+// Adjust admin menu position to avoid screen clipping
+function adjustAdminMenus() {
+  document.querySelectorAll('.admin-menu').forEach(menu => {
+    menu.classList.remove('right-adjust');
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.classList.add('right-adjust');
+    }
+    if (rect.bottom > window.innerHeight) {
+      menu.style.top = 'auto';
+      menu.style.bottom = '100%';
+    } else {
+      menu.style.top = '100%';
+      menu.style.bottom = 'auto';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadPosts();
+  document.querySelectorAll('.admin-menu-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const menu = btn.nextElementSibling; // assumes menu is right after button
+      if(menu) {
+        menu.classList.toggle('show');
+        adjustAdminMenus();
+      }
+    });
+  });
+  // Close menus if clicked outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.admin-menu.show').forEach(menu => {
+      menu.classList.remove('show');
+    });
+  });
+  window.addEventListener('resize', adjustAdminMenus);
+});
 </script>
 {% endif %}
 {% endblock %}
