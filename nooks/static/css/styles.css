@@ -403,6 +403,7 @@ footer {
 }
 
 @media (max-width: 768px) {
+  /* For .card-buttons layout */
   .card-buttons {
     display: flex !important;
     flex-wrap: wrap;
@@ -420,7 +421,18 @@ footer {
     margin-bottom: 0.5rem;
     box-sizing: border-box;
   }
+
+  /* For .btn-group layout */
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .btn-group .btn {
+    flex: 1 1 48%;
+    margin-bottom: 0.5rem;
+    white-space: normal;
+  }
 }
-
-
-
