@@ -60,41 +60,41 @@ footer {
 }
 
 .total-books-card {
-    border: 3px solid var(--primary-color) !important; /* blue */
+    border: 1.5px solid var(--primary-color) !important; /* blue */
 }
 
 .completed-tasks-card {
-    border: 3px solid var(--nook-color) !important; /* green */
+    border: 1.5px solid var(--nook-color) !important; /* green */
 }
 
 .reading-streak-card {
-    border: 3px solid #ffc107 !important; /* yellow */
+    border: 1.5px solid #ffc107 !important; /* yellow */
 }
 
 .task-streak-card {
-    border: 3px solid var(--hook-color) !important; /* cyan */
+    border: 1.5px solid var(--hook-color) !important; /* cyan */
 }
 
 /* Home Page Cards */
 .nook-card {
-    border: 3px solid var(--nook-color) !important; /* green */
+    border: 1.5px solid var(--nook-color) !important; /* green */
 }
 
 .hook-card {
-    border: 3px solid var(--hook-color) !important; /* cyan */
+    border: 1.5px solid var(--hook-color) !important; /* cyan */
 }
 
 .nooks-club-card {
-    border: 3px solid var(--primary-color) !important; /* blue */
+    border: 1.5px solid var(--primary-color) !important; /* blue */
 }
 
 .mini-modules-card {
-    border: 3px solid #ffc107 !important; /* yellow */
+    border: 1.5px solid #ffc107 !important; /* yellow */
 }
 
 /* Chart and Recent Activity Cards */
 .reading-progress-card, .task-analytics-card, .recent-books-card, .recent-rewards-card {
-    border: 3px solid var(--primary-color) !important; /* blue for consistency */
+    border: 1.5px solid var(--primary-color) !important; /* blue for consistency */
 }
 
 .card-body {
@@ -287,7 +287,7 @@ footer {
 }
 
 .btn-login:focus, .btn-register:focus, .btn-nook:focus, .btn-hook:focus, .quick-actions.btn:focus {
-    outline: 3px solid #0d6efd;
+    outline: 1.5px solid #0d6efd;
     outline-offset: 2px;
 }
 
@@ -388,3 +388,4 @@ footer {
     background-color: #0dcaf0;
     color: white !important;
 }
+
