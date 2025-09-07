@@ -2,6 +2,9 @@
 {% block content %}
 <div class="container">
   <h2>Create a New Club</h2>
+  <nav class="mb-3">
+    <a href="{{ url_for('nooks_club.index') }}" class="btn btn-outline-secondary">Back to Clubs</a>
+  </nav>
   <form method="post" action="{{ url_for('nooks_club.create_club') }}">
     {{ form.hidden_tag() }}
     <div class="form-group">
@@ -22,7 +25,6 @@
         {% endfor %}
       {% endif %}
     </div>
-    <!-- Optional topic field -->
     <div class="form-group">
       <label for="topic">Topic (Optional)</label>
       <input type="text" name="topic" id="topic" class="form-control mb-2" placeholder="Topic">
