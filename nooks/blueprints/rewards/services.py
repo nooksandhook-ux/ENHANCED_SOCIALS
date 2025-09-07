@@ -2,6 +2,7 @@ from flask import current_app
 from bson import ObjectId
 from datetime import datetime, timedelta
 import math
+import random
 
 class RewardService:
     """Service class for handling rewards, points, badges, and achievements"""
@@ -677,9 +678,14 @@ class RewardService:
             {'id': 'title_scholar', 'name': 'Scholar Title', 'description': 'Display "Scholar" next to your name', 'cost': 600, 'type': 'title', 'icon': '🎓'},
             {'id': 'title_master', 'name': 'Reading Master Title', 'description': 'Display "Reading Master" next to your name', 'cost': 1000, 'type': 'title', 'icon': '👑'},
             
+            # Avatar styles
+            {'id': 'lorelei', 'name': 'Lorelei Avatar Style', 'description': 'Stylized character avatars with modern design', 'cost': 500, 'type': 'avatar_style', 'icon': '🎨'},
+            {'id': 'bottts', 'name': 'Bottts Avatar Style', 'description': 'Abstract robot avatars with unique patterns', 'cost': 500, 'type': 'avatar_style', 'icon': '🤖'},
+            {'id': 'adventurer', 'name': 'Adventurer Avatar Style', 'description': 'Fantasy-themed avatars for adventurous users', 'cost': 750, 'type': 'avatar_style', 'icon': '⚔️'},
+            
             # Mystery boxes
-            {'id': 'mystery_box_small', 'name': 'Small Mystery Box', 'description': 'Random reward: 50-200 points or theme', 'cost': 250, 'type': 'mystery_box', 'icon': '📦'},
-            {'id': 'mystery_box_large', 'name': 'Large Mystery Box', 'description': 'Random reward: 200-500 points or premium item', 'cost': 600, 'type': 'mystery_box', 'icon': '🎁'},
+            {'id': 'mystery_box_small', 'name': 'Small Mystery Box', 'description': 'Random reward: 50-200 points, theme, or avatar style', 'cost': 250, 'type': 'mystery_box', 'icon': '📦'},
+            {'id': 'mystery_box_large', 'name': 'Large Mystery Box', 'description': 'Random reward: 200-500 points, theme, or premium avatar style', 'cost': 600, 'type': 'mystery_box', 'icon': '🎁'},
             
             # Boosters
             {'id': 'point_booster_2x', 'name': '2x Point Booster', 'description': 'Double points for 24 hours', 'cost': 800, 'type': 'booster', 'icon': '⚡'},
@@ -701,7 +707,7 @@ class RewardService:
             return False, "Insufficient points"
         
         # Check if user already owns this item (for non-consumables)
-        if item['type'] in ['theme', 'avatar_frame', 'title']:
+        if item['type'] in ['theme', 'avatar_frame', 'title', 'avatar_style']:
             existing_purchase = current_app.mongo.db.user_purchases.find_one({
                 'user_id': user_id,
                 'item_id': item_id
@@ -749,11 +755,10 @@ class RewardService:
     @staticmethod
     def _open_mystery_box(user_id, box_type):
         """Handle mystery box opening"""
-        import random
-        
         if box_type == 'mystery_box_small':
-            # 70% chance for points, 30% chance for theme
-            if random.random() < 0.7:
+            # 60% chance for points, 30% chance for theme, 10% chance for avatar style
+            rand = random.random()
+            if rand < 0.6:
                 points = random.randint(50, 200)
                 RewardService.award_points(
                     user_id=user_id,
@@ -763,7 +768,7 @@ class RewardService:
                     category='mystery_reward'
                 )
                 return {'type': 'points', 'value': points}
-            else:
+            elif rand < 0.9:
                 # Grant a random theme
                 themes = ['theme_ocean', 'theme_forest']
                 theme = random.choice(themes)
@@ -778,11 +783,26 @@ class RewardService:
                     'source': 'mystery_box'
                 })
                 return {'type': 'theme', 'value': theme}
+            else:
+                # Grant a random avatar style
+                avatar_styles = ['lorelei', 'bottts']
+                style = random.choice(avatar_styles)
+                current_app.mongo.db.user_purchases.insert_one({
+                    'user_id': user_id,
+                    'item_id': style,
+                    'item_name': style.replace('_', ' ').title(),
+                    'cost': 0,
+                    'type': 'avatar_style',
+                    'purchased_at': datetime.utcnow(),
+                    'is_active': True,
+                    'source': 'mystery_box'
+                })
+                return {'type': 'avatar_style', 'value': style}
         
         elif box_type == 'mystery_box_large':
-            # 50% points, 30% theme, 20% premium item
+            # 40% points, 30% theme, 20% avatar style, 10% premium item
             rand = random.random()
-            if rand < 0.5:
+            if rand < 0.4:
                 points = random.randint(200, 500)
                 RewardService.award_points(
                     user_id=user_id,
@@ -792,7 +812,7 @@ class RewardService:
                     category='mystery_reward'
                 )
                 return {'type': 'points', 'value': points}
-            elif rand < 0.8:
+            elif rand < 0.7:
                 themes = ['theme_sunset', 'theme_midnight', 'theme_aurora']
                 theme = random.choice(themes)
                 current_app.mongo.db.user_purchases.insert_one({
@@ -806,6 +826,20 @@ class RewardService:
                     'source': 'mystery_box'
                 })
                 return {'type': 'theme', 'value': theme}
+            elif rand < 0.9:
+                avatar_styles = ['lorelei', 'bottts', 'adventurer']
+                style = random.choice(avatar_styles)
+                current_app.mongo.db.user_purchases.insert_one({
+                    'user_id': user_id,
+                    'item_id': style,
+                    'item_name': style.replace('_', ' ').title(),
+                    'cost': 0,
+                    'type': 'avatar_style',
+                    'purchased_at': datetime.utcnow(),
+                    'is_active': True,
+                    'source': 'mystery_box'
+                })
+                return {'type': 'avatar_style', 'value': style}
             else:
                 # Premium item
                 items = ['title_scholar', 'avatar_frame_gold']
