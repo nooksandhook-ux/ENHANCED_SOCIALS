@@ -31,26 +31,6 @@
     color: var(--text-primary);
 }
 
-[data-theme="dark"] .nook-card {
-    background-color: #2d6b3f !important; /* Darker green */
-    border-color: var(--nook-color) !important;
-}
-
-[data-theme="dark"] .hook-card {
-    background-color: #2a6b80 !important; /* Darker cyan */
-    border-color: var(--hook-color) !important;
-}
-
-[data-theme="dark"] .streak-card {
-    background-color: #6b5b2a !important; /* Darker yellow */
-    border-color: var(--streak-color) !important;
-}
-
-[data-theme="dark"] .task-card {
-    background-color: #2a4a80 !important; /* Darker blue */
-    border-color: var(--primary-color) !important;
-}
-
 [data-theme="dark"] .navbar {
     background-color: var(--bg-secondary) !important;
 }
@@ -77,26 +57,6 @@
     box-shadow: 4px 4px 8px var(--shadow);
 }
 
-[data-theme="retro"] .nook-card {
-    background-color: #a8d5a2 !important; /* Retro green */
-    border-color: var(--nook-color) !important;
-}
-
-[data-theme="retro"] .hook-card {
-    background-color: #a2d5e6 !important; /* Retro cyan */
-    border-color: var(--hook-color) !important;
-}
-
-[data-theme="retro"] .streak-card {
-    background-color: #e6d5a2 !important; /* Retro yellow */
-    border-color: var(--streak-color) !important;
-}
-
-[data-theme="retro"] .task-card {
-    background-color: #a2b5e6 !important; /* Retro blue */
-    border-color: var(--primary-color) !important;
-}
-
 [data-theme="retro"] .btn-primary {
     background-color: var(--accent-color);
     border-color: var(--accent-color);
@@ -121,26 +81,6 @@
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-}
-
-[data-theme="neon"] .nook-card {
-    background-color: #004d00 !important; /* Neon green */
-    border-color: var(--nook-color) !important;
-}
-
-[data-theme="neon"] .hook-card {
-    background-color: #006666 !important; /* Neon cyan */
-    border-color: var(--hook-color) !important;
-}
-
-[data-theme="neon"] .streak-card {
-    background-color: #666600 !important; /* Neon yellow */
-    border-color: var(--streak-color) !important;
-}
-
-[data-theme="neon"] .task-card {
-    background-color: #003366 !important; /* Neon blue */
-    border-color: var(--primary-color) !important;
 }
 
 [data-theme="neon"] .btn-primary {
@@ -176,26 +116,6 @@
     box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
 }
 
-[data-theme="anime"] .nook-card {
-    background-color: #b3e6b3 !important; /* Anime green */
-    border-color: var(--nook-color) !important;
-}
-
-[data-theme="anime"] .hook-card {
-    background-color: #b3e6e6 !important; /* Anime cyan */
-    border-color: var(--hook-color) !important;
-}
-
-[data-theme="anime"] .streak-card {
-    background-color: #e6e6b3 !important; /* Anime yellow */
-    border-color: var(--streak-color) !important;
-}
-
-[data-theme="anime"] .task-card {
-    background-color: #b3b3e6 !important; /* Anime blue */
-    border-color: var(--primary-color) !important;
-}
-
 [data-theme="anime"] .btn-primary {
     background: linear-gradient(45deg, #FF69B4, #9370DB);
     border: none;
@@ -223,26 +143,6 @@
     box-shadow: 0 2px 10px rgba(34, 139, 34, 0.2);
 }
 
-[data-theme="forest"] .nook-card {
-    background-color: #c2f0c2 !important; /* Forest green */
-    border-color: var(--nook-color) !important;
-}
-
-[data-theme="forest"] .hook-card {
-    background-color: #c2f0f0 !important; /* Forest cyan */
-    border-color: var(--hook-color) !important;
-}
-
-[data-theme="forest"] .streak-card {
-    background-color: #f0f0c2 !important; /* Forest yellow */
-    border-color: var(--streak-color) !important;
-}
-
-[data-theme="forest"] .task-card {
-    background-color: #c2c2f0 !important; /* Forest blue */
-    border-color: var(--primary-color) !important;
-}
-
 /* Ocean Theme */
 [data-theme="ocean"] {
     --bg-primary: #F0F8FF;
@@ -262,26 +162,6 @@
     background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     box-shadow: 0 2px 10px rgba(70, 130, 180, 0.2);
-}
-
-[data-theme="ocean"] .nook-card {
-    background-color: #c2e6ff !important; /* Ocean green */
-    border-color: var(--nook-color) !important;
-}
-
-[data-theme="ocean"] .hook-card {
-    background-color: #c2f0ff !important; /* Ocean cyan */
-    border-color: var(--hook-color) !important;
-}
-
-[data-theme="ocean"] .streak-card {
-    background-color: #ffe6c2 !important; /* Ocean yellow */
-    border-color: var(--streak-color) !important;
-}
-
-[data-theme="ocean"] .task-card {
-    background-color: #c2d6ff !important; /* Ocean blue */
-    border-color: var(--primary-color) !important;
 }
 
 /* Timer Theme Styles */
