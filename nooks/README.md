@@ -488,3 +488,15 @@ For support, please open an issue on GitHub or contact the development team.
 - **Lazy Loading**: Efficient data loading
 - **Pagination**: Large dataset handling
 - **API Optimization**: Efficient data serialization
+
+Security & Fair Use
+
+At Nooks, we prioritize user safety, copyright respect, and fair access to knowledge. Here’s how we protect content while promoting literacy:
+
+- Secure Reading Only: Books are accessed through a protected in-app reader—downloads are disabled to prevent unauthorized sharing.  
+- Encrypted Uploads: All PDFs are encrypted, and their status is clearly shown in your uploads.  
+- Private Access: Uploaded books are private. Only the uploader and admins (for quote verification) can access them.  
+- Anti-Piracy by Design: We use secure PDF rendering with no share/download links.  
+- Activity Tracking: We log reading behavior securely (CSRF-protected) to ensure fair participation and prevent misuse.  
+- Clear User Responsibility: Our Terms hold users accountable for uploaded content, ensuring we stay compliant with intellectual property rights.  
+- Mission-Driven: Nooks is a non-profit platform. We reward reading and respect authors, working to build a fair, community-centered ecosystem.
