@@ -44,9 +44,9 @@ footer {
     text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.15);
     transition: transform 0.2s ease-in-out;
     min-height: auto;
-    padding: 1.5rem; /* Increased padding for internal spacing */
+    padding: 1rem;
     box-sizing: border-box;
-    margin: 0.75rem; /* Added margin to separate cards visually */
+    overflow: hidden; /* Prevent content spillover */
 }
 
 .card:hover {
@@ -101,42 +101,37 @@ footer {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 1rem; /* Increased gap for better spacing */
+    gap: 0.5rem; /* Reduced gap due to less content */
     height: 100%;
-    padding: 1.5rem; /* Increased padding for internal spacing */
+    padding: 1rem; /* Reduced padding for balance */
 }
 
 /* Card Footer */
 .card-footer {
-    margin-top: auto; /* Pushes footer to bottom */
-    padding: 1rem 0; /* Increased padding for separation */
+    margin-top: auto;
+    padding: 0.75rem 0;
     text-align: center;
-    border-top: 1px solid #eee; /* Subtle separator for clarity */
+    border-top: 1px solid #eee;
 }
 
-/* Wrapper container for the cards, ensuring equal height and separation */
+/* Wrapper container for the cards */
 .cards-container {
-    margin-bottom: 3rem; /* Increased margin to separate from Quick Actions */
+    margin-bottom: 4rem; /* Increased for separation */
 }
 
 .cards-container .row {
     display: flex;
     flex-wrap: wrap;
-    align-items: stretch; /* Makes all cards match tallest height */
-    gap: 1rem; /* Added gap to separate cards */
-}
-
-.cards-container .card {
-    height: 100%; /* Ensures cards stretch to tallest */
+    align-items: stretch; /* Equal card heights */
 }
 
 /* Align card buttons above footer */
 .card-buttons {
     display: flex !important;
     flex-direction: column;
-    gap: 0.75rem !important; /* Slightly increased for clarity */
+    gap: 0.75rem !important;
     margin-top: 1rem !important;
-    margin-bottom: 1rem !important; /* Added to separate from footer */
+    margin-bottom: 1.5rem !important; /* Increased for footer separation */
 }
 
 .card-buttons .btn {
@@ -150,8 +145,8 @@ footer {
 
 /* Quick Actions Section */
 .quick-actions-section {
-    margin-top: 4rem; /* Increased to ensure clear separation */
-    margin-bottom: 2rem; /* Added to prevent overlap with content below */
+    margin-top: 5rem; /* Increased for clear separation */
+    margin-bottom: 3rem; /* Ensure no overlap with content below */
 }
 
 .quick-actions.btn {
@@ -227,11 +222,10 @@ footer {
 /* Responsive Design */
 @media (max-width: 768px) {
     .cards-container .row {
-        display: block; /* Revert to block for stacking */
-        gap: 0; /* Remove gap as block layout handles spacing */
+        display: block;
     }
     .card {
-        margin: 0.5rem 0; /* Adjusted margin for mobile */
+        margin: 0.5rem 0;
     }
     .timer-display {
         font-size: 2.5rem;
