@@ -7,13 +7,14 @@
 <div class="row">
     <div class="col-12">
         <div class="text-center mb-5">
-            <h Verbose output: <h1 class="display-4 fw-bold text-primary">Welcome to Nook & Hook</h1>
+            <h1 class="display-4 fw-bold text-primary">Welcome to Nook & Hook</h1>
             <p class="lead text-muted">Your personal reading tracker and productivity timer</p>
         </div>
     </div>
+</div>
 
 <div class="cards-container">
-    <div class="row g-0">
+    <div class="row g-3"> <!-- Changed from g-0 to g-3 for spacing -->
         <!-- Nook Card -->
         <div class="col-md-6 col-lg-3">
             <div class="card h-100 shadow-sm border-0 nook-card">
@@ -23,9 +24,6 @@
                     </div>
                     <h3 class="card-title fw-bold text-success">Nook</h3>
                     <p class="card-text text-muted mb-2 fw-bold">Fuel your mind, one page at a time.</p>
-                    <p class="card-text text-muted mb-4">
-                        Track your reading journey, discover new books, and build lasting reading habits.
-                    </p>
                     <div class="card-buttons">
                         <a href="{{ url_for('nook.index') }}" class="btn btn-success btn-lg">
                             <span><i class="bi bi-book-half me-2"></i>Start Reading</span>
@@ -53,9 +51,6 @@
                     </div>
                     <h3 class="card-title fw-bold text-info">Hook</h3>
                     <p class="card-text text-muted mb-2 fw-bold">Focus better, finish faster.</p>
-                    <p class="card-text text-muted mb-4">
-                        Boost productivity with focused work sessions and the Pomodoro technique.
-                    </p>
                     <div class="card-buttons">
                         <a href="{{ url_for('hook.timer') }}" class="btn btn-info btn-lg">
                             <span><i class="bi bi-play-circle me-2"></i>Start Timer</span>
@@ -83,9 +78,6 @@
                     </div>
                     <h3 class="card-title fw-bold text-primary">Nooks Club</h3>
                     <p class="card-text text-muted mb-2 fw-bold">Read together. Grow together.</p>
-                    <p class="card-text text-muted mb-4">
-                        Join or create book clubs, discuss, and read together with the community.
-                    </p>
                     <div class="card-buttons">
                         <a href="{{ url_for('nooks_club.index') }}" class="btn btn-primary btn-lg">
                             <span><i class="bi bi-people-fill me-2"></i>Join Readers</span>
@@ -109,10 +101,7 @@
                         <i class="bi bi-lightbulb display-1 text-warning"></i>
                     </div>
                     <h3 class="card-title fw-bold text-warning">Mini Modules</h3>
-                    <p class="card-text text-muted mb-2 fuel-bold">Learn smarter.</p>
-                    <p class="card-text text-muted mb-4">
-                        Flashcards, quizzes, and more to boost your learning and retention.
-                    </p>
+                    <p class="card-text text-muted mb-2 fw-bold">Learn smarter.</p>
                     <div class="card-buttons">
                         <a href="{{ url_for('mini_modules.index') }}" class="btn btn-warning btn-lg text-white">
                             <span><i class="bi bi-lightning-charge me-2"></i>Test Brains</span>
