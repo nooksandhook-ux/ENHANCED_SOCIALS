@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file, session
 from flask_login import login_required, current_user
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from bson import ObjectId
 from datetime import datetime, timedelta
 import os
@@ -13,6 +14,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, TextAreaField, SelectField, IntegerField, HiddenField, BooleanField, FloatField
 from wtforms.validators import DataRequired, Optional, NumberRange
+from models import ActivityLogger  # Import ActivityLogger from models.py
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,17 +22,17 @@ logger = logging.getLogger(__name__)
 
 nook_bp = Blueprint('nook', __name__, template_folder='templates')
 
+# Initialize CSRF protection for blueprint
+csrf = CSRFProtect()
+
 # Initialize encryption
 ENCRYPTION_KEY = os.environ.get('UPLOAD_ENCRYPTION_KEY', Fernet.generate_key())
 fernet = Fernet(ENCRYPTION_KEY)
 
-# Configure CSRF token lifetime (2 hours)
-nook_bp.config = {'WTF_CSRF_TIME_LIMIT': 7200}
-
 # Form Definitions
 class AddBookForm(FlaskForm):
     pdf_file = FileField('Upload Book (PDF only, max 10MB)', validators=[FileAllowed(['pdf'], 'Only PDF files are allowed.'), Optional()])
-    terms_agreement = BooleanField('I confirm I have the legal right to upload this PDF and agree to the Terms of Service.', validators=[DataRequired()])
+    terms_agreement = BooleanField('I confirm I have the legal right to upload this PDF and agree to the Terms of Service.', validators=[Optional()])
     google_books_id = HiddenField('Google Books ID', validators=[Optional()])
     cover_image = HiddenField('Cover Image', validators=[Optional()])
     is_encrypted = HiddenField('Is Encrypted', default='true', validators=[Optional()])
@@ -104,6 +106,14 @@ def index():
         'completion_rate': round((finished_books / total_books * 100), 1) if total_books > 0 else 0
     }
     
+    # Log activity
+    ActivityLogger.log_activity(
+        user_id=user_id,
+        action='view_library',
+        description='Viewed personal library',
+        metadata={'total_books': total_books}
+    )
+    
     return render_template('nook/index.html', 
                          books=books, 
                          stats=stats,
@@ -113,73 +123,77 @@ def index():
 @login_required
 def add_book():
     form = AddBookForm()
-    if request.method == 'POST' and form.validate_on_submit():
-        try:
-            user_id = ObjectId(current_user.id)
-            # Form fields
-            google_books_id = form.google_books_id.data
-            title = form.title.data
-            authors = [a.strip() for a in form.authors.data.split(',')]
-            description = form.description.data
-            cover_image = form.cover_image.data
-            page_count = form.page_count.data or 0
-            status = form.status.data
-            genre = form.genre.data
-            isbn = form.isbn.data
-            published_date = form.published_date.data
+    logger.info(f"Session ID: {session.sid if hasattr(session, 'sid') else 'None'}, User ID: {current_user.id}, Request Method: {request.method}")
+    
+    if request.method == 'POST':
+        logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
+        logger.info(f"Form Data: {request.form}")
+        if form.validate_on_submit():
+            try:
+                user_id = ObjectId(current_user.id)
+                # Form fields
+                google_books_id = form.google_books_id.data
+                title = form.title.data
+                authors = [a.strip() for a in form.authors.data.split(',')]
+                description = form.description.data
+                cover_image = form.cover_image.data
+                page_count = form.page_count.data or 0
+                status = form.status.data
+                genre = form.genre.data
+                isbn = form.isbn.data
+                published_date = form.published_date.data
 
-            # Check for duplicate book
-            existing_book = current_app.mongo.db.books.find_one({
-                'user_id': user_id,
-                'title': title.strip(),
-                'authors': authors
-            })
-            if existing_book:
-                flash("You already added this book.", "warning")
-                return redirect(request.url)
+                # Check for duplicate book
+                existing_book = current_app.mongo.db.books.find_one({
+                    'user_id': user_id,
+                    'title': title.strip(),
+                    'authors': authors
+                })
+                if existing_book:
+                    flash("You already added this book.", "warning")
+                    return redirect(url_for('nook.index'))
 
-            # Enforce upload limit: max 10 books with PDF per user per month
-            month_ago = datetime.utcnow() - timedelta(days=30)
-            upload_count = current_app.mongo.db.books.count_documents({
-                'user_id': user_id,
-                'pdf_path': {'$ne': None},
-                'added_at': {'$gte': month_ago}
-            })
-            if upload_count >= 10:
-                flash('Upload limit reached: Max 10 books with PDF per month.', 'danger')
-                return redirect(request.url)
+                # Enforce upload limit: max 10 books with PDF per user per month
+                month_ago = datetime.utcnow() - timedelta(days=30)
+                upload_count = current_app.mongo.db.books.count_documents({
+                    'user_id': user_id,
+                    'pdf_path': {'$ne': None},
+                    'added_at': {'$gte': month_ago}
+                })
+                if upload_count >= 10:
+                    flash('Upload limit reached: Max 10 books with PDF per month.', 'danger')
+                    return redirect(url_for('nook.index'))
 
-            pdf_path = None
-            pdf_file = form.pdf_file.data
-            if pdf_file:
-                pdf_file.seek(0, os.SEEK_END)
-                file_size = pdf_file.tell()
-                pdf_file.seek(0)
-                if file_size > 10 * 1024 * 1024:
-                    flash('File size exceeds 10MB limit.', 'danger')
-                    return redirect(request.url)
-                upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', str(user_id))
-                os.makedirs(upload_dir, exist_ok=True)
-                pdf_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secure_filename(pdf_file.filename)}"
-                pdf_path_full = os.path.join(upload_dir, pdf_filename)
-                # Encrypt PDF before saving
-                encrypted_pdf = fernet.encrypt(pdf_file.read())
-                with open(pdf_path_full, 'wb') as f:
-                    f.write(encrypted_pdf)
-                pdf_path = f"uploads/{user_id}/{pdf_filename}"
+                pdf_path = None
+                pdf_file = form.pdf_file.data
+                if pdf_file and form.terms_agreement.data:
+                    pdf_file.seek(0, os.SEEK_END)
+                    file_size = pdf_file.tell()
+                    pdf_file.seek(0)
+                    if file_size > 10 * 1024 * 1024:
+                        flash('File size exceeds 10MB limit.', 'danger')
+                        return redirect(url_for('nook.index'))
+                    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', str(user_id))
+                    os.makedirs(upload_dir, exist_ok=True)
+                    pdf_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secure_filename(pdf_file.filename)}"
+                    pdf_path_full = os.path.join(upload_dir, pdf_filename)
+                    # Encrypt PDF before saving
+                    encrypted_pdf = fernet.encrypt(pdf_file.read())
+                    with open(pdf_path_full, 'wb') as f:
+                        f.write(encrypted_pdf)
+                    pdf_path = f"uploads/{user_id}/{pdf_filename}"
 
-                # Log upload
-                current_app.activity_logger.log_activity(
-                    user_id=user_id,
-                    action='pdf_upload',
-                    description=f'Uploaded PDF for book: {title}',
-                    metadata={'book_title': title, 'filename': pdf_filename}
-                )
+                    # Log upload
+                    ActivityLogger.log_activity(
+                        user_id=user_id,
+                        action='pdf_upload',
+                        description=f'Uploaded PDF for book: {title}',
+                        metadata={'book_title': title, 'filename': pdf_filename}
+                    )
 
-            if google_books_id:
                 book_data = {
                     'user_id': user_id,
-                    'google_books_id': google_books_id,
+                    'google_books_id': google_books_id or None,
                     'title': title,
                     'authors': authors,
                     'description': description,
@@ -198,48 +212,42 @@ def add_book():
                     'reading_sessions': [],
                     'pdf_path': pdf_path
                 }
+
+                result = current_app.mongo.db.books.insert_one(book_data)
+                ActivityLogger.log_activity(
+                    user_id=user_id,
+                    action='add_book',
+                    description=f'Added book: {title}',
+                    metadata={'book_id': str(result.inserted_id), 'title': title}
+                )
+                RewardService.award_points(
+                    user_id=user_id,
+                    points=5,
+                    source='nook',
+                    description=f'Added book: {title}',
+                    category='book_management',
+                    reference_id=str(result.inserted_id)
+                )
+                flash('Book added successfully!', 'success')
+                return redirect(url_for('nook.index'))
+            except Exception as e:
+                logger.error(f"Error adding book: {str(e)}", exc_info=True)
+                flash(f"An error occurred: {str(e)}", "danger")
+                form.csrf_token.data = generate_csrf()
+                return render_template('nook/add_book.html', form=form), 500
+        else:
+            logger.error(f"Form validation failed: {form.errors}")
+            if 'csrf_token' in form.errors:
+                logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                flash("CSRF token error: Please refresh the page and try again.", "danger")
             else:
-                book_data = {
-                    'user_id': user_id,
-                    'title': title,
-                    'authors': authors,
-                    'description': description,
-                    'page_count': page_count,
-                    'current_page': 0,
-                    'status': status,
-                    'added_at': datetime.utcnow(),
-                    'key_takeaways': [],
-                    'quotes': [],
-                    'rating': 0,
-                    'notes': '',
-                    'genre': genre,
-                    'isbn': isbn,
-                    'published_date': published_date,
-                    'reading_sessions': [],
-                    'pdf_path': pdf_path
-                }
-
-            result = current_app.mongo.db.books.insert_one(book_data)
-            RewardService.award_points(
-                user_id=user_id,
-                points=5,
-                source='nook',
-                description=f'Added book: {book_data["title"]}',
-                category='book_management',
-                reference_id=str(result.inserted_id)
-            )
-            flash('Book added successfully!', 'success')
-            return redirect(url_for('nook.index'))
-        except Exception as e:
-            logger.error(f"Error adding book: {str(e)}", exc_info=True)
-            flash(f"An error occurred: {str(e)}", "danger")
-            return redirect(request.url)
-    elif request.method == 'POST':
-        # If form validation fails, display errors
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f"Error in {field}: {error}", "danger")
-
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        flash(f"Error in {field}: {error}", "danger")
+            form.csrf_token.data = generate_csrf()
+            return render_template('nook/add_book.html', form=form)
+    
+    form.csrf_token.data = generate_csrf()
     return render_template('nook/add_book.html', form=form)
 
 @nook_bp.route('/edit_book/<book_id>', methods=['GET', 'POST'])
@@ -253,47 +261,67 @@ def edit_book(book_id):
             flash('Book not found.', 'danger')
             return redirect(url_for('nook.my_uploads'))
         
-        if form.validate_on_submit():
-            # Check terms agreement for new PDF uploads
-            if form.pdf_file.data and not form.terms_agreement.data:
-                flash('You must agree to the terms before uploading.', 'danger')
-                return redirect(request.url)
-            
-            # Form fields
-            update = {
-                'title': form.title.data,
-                'authors': [a.strip() for a in form.authors.data.split(',')],
-                'page_count': form.page_count.data or 0,
-                'description': form.description.data,
-                'status': form.status.data
-            }
-            pdf_file = form.pdf_file.data
-            if pdf_file:
-                pdf_file.seek(0, os.SEEK_END)
-                file_size = pdf_file.tell()
-                pdf_file.seek(0)
-                if file_size > 10 * 1024 * 1024:
-                    flash('File size exceeds 10MB limit.', 'danger')
+        if request.method == 'POST':
+            logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
+            logger.info(f"Form Data: {request.form}")
+            if form.validate_on_submit():
+                # Check terms agreement for new PDF uploads
+                if form.pdf_file.data and not form.terms_agreement.data:
+                    flash('You must agree to the terms before uploading.', 'danger')
                     return redirect(request.url)
-                upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', str(user_id))
-                os.makedirs(upload_dir, exist_ok=True)
-                pdf_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secure_filename(pdf_file.filename)}"
-                pdf_path_full = os.path.join(upload_dir, pdf_filename)
-                # Encrypt PDF before saving
-                encrypted_pdf = fernet.encrypt(pdf_file.read())
-                with open(pdf_path_full, 'wb') as f:
-                    f.write(encrypted_pdf)
-                update['pdf_path'] = f"uploads/{user_id}/{pdf_filename}"
-                # Log upload
-                current_app.activity_logger.log_activity(
+                
+                # Form fields
+                update = {
+                    'title': form.title.data,
+                    'authors': [a.strip() for a in form.authors.data.split(',')],
+                    'page_count': form.page_count.data or 0,
+                    'description': form.description.data,
+                    'status': form.status.data
+                }
+                pdf_file = form.pdf_file.data
+                if pdf_file:
+                    pdf_file.seek(0, os.SEEK_END)
+                    file_size = pdf_file.tell()
+                    pdf_file.seek(0)
+                    if file_size > 10 * 1024 * 1024:
+                        flash('File size exceeds 10MB limit.', 'danger')
+                        return redirect(request.url)
+                    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', str(user_id))
+                    os.makedirs(upload_dir, exist_ok=True)
+                    pdf_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secure_filename(pdf_file.filename)}"
+                    pdf_path_full = os.path.join(upload_dir, pdf_filename)
+                    # Encrypt PDF before saving
+                    encrypted_pdf = fernet.encrypt(pdf_file.read())
+                    with open(pdf_path_full, 'wb') as f:
+                        f.write(encrypted_pdf)
+                    update['pdf_path'] = f"uploads/{user_id}/{pdf_filename}"
+                    # Log upload
+                    ActivityLogger.log_activity(
+                        user_id=user_id,
+                        action='pdf_upload',
+                        description=f'Uploaded new PDF for book: {form.title.data}',
+                        metadata={'book_id': book_id, 'filename': pdf_filename}
+                    )
+                current_app.mongo.db.books.update_one({'_id': ObjectId(book_id)}, {'$set': update})
+                ActivityLogger.log_activity(
                     user_id=user_id,
-                    action='pdf_upload',
-                    description=f'Uploaded new PDF for book: {form.title.data}',
-                    metadata={'book_id': book_id, 'filename': pdf_filename}
+                    action='edit_book',
+                    description=f'Edited book: {form.title.data}',
+                    metadata={'book_id': book_id}
                 )
-            current_app.mongo.db.books.update_one({'_id': ObjectId(book_id)}, {'$set': update})
-            flash('Book updated successfully!', 'success')
-            return redirect(url_for('nook.my_uploads'))
+                flash('Book updated successfully!', 'success')
+                return redirect(url_for('nook.my_uploads'))
+            else:
+                logger.error(f"Form validation failed: {form.errors}")
+                if 'csrf_token' in form.errors:
+                    logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                    flash("CSRF token error: Please refresh the page and try again.", "danger")
+                else:
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            flash(f"Error in {field}: {error}", "danger")
+                form.csrf_token.data = generate_csrf()
+                return render_template('nook/edit_book.html', form=form, book=book)
         
         # Pre-populate form with existing book data
         form.title.data = book.get('title', '')
@@ -301,12 +329,13 @@ def edit_book(book_id):
         form.page_count.data = book.get('page_count', 0)
         form.description.data = book.get('description', '')
         form.status.data = book.get('status', 'to_read')
-        
+        form.csrf_token.data = generate_csrf()
         return render_template('nook/edit_book.html', form=form, book=book)
     except Exception as e:
         logger.error(f"Error editing book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
-        return redirect(url_for('nook.my_uploads'))
+        form.csrf_token.data = generate_csrf()
+        return render_template('nook/edit_book.html', form=form, book=book), 500
 
 @nook_bp.route('/delete_book/<book_id>', methods=['POST'])
 @login_required
@@ -335,7 +364,7 @@ def delete_book(book_id):
             logger.info(f"Book {book_id} deleted by user {user_id}")
 
             # Log deletion
-            current_app.activity_logger.log_activity(
+            ActivityLogger.log_activity(
                 user_id=user_id,
                 action='book_deletion',
                 description=f'Deleted book: {book["title"]}',
@@ -355,9 +384,14 @@ def delete_book(book_id):
             flash('Book deleted successfully!', 'success')
             return redirect(url_for('nook.my_uploads'))
         else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Error: {error}", "danger")
+            logger.error(f"Form validation failed: {form.errors}")
+            if 'csrf_token' in form.errors:
+                logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                flash("CSRF token error: Please refresh the page and try again.", "danger")
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        flash(f"Error: {error}", "danger")
             return redirect(url_for('nook.my_uploads'))
     except Exception as e:
         logger.error(f"Error deleting book {book_id}: {str(e)}", exc_info=True)
@@ -396,7 +430,7 @@ def serve_pdf(book_id):
         decrypted_pdf = fernet.decrypt(encrypted_pdf)
         
         # Log access
-        current_app.activity_logger.log_activity(
+        ActivityLogger.log_activity(
             user_id=user_id,
             action='pdf_access',
             description=f'Accessed PDF for book: {book["title"]}',
@@ -419,6 +453,12 @@ def my_uploads():
     try:
         user_id = ObjectId(current_user.id)
         books = list(current_app.mongo.db.books.find({'user_id': user_id, 'pdf_path': {'$ne': None}}).sort('added_at', -1))
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            action='view_uploads',
+            description='Viewed uploaded books',
+            metadata={'book_count': len(books)}
+        )
         return render_template('nook/my_uploads.html', books=books)
     except Exception as e:
         logger.error(f"Error loading my_uploads: {str(e)}", exc_info=True)
@@ -427,27 +467,41 @@ def my_uploads():
 
 @nook_bp.route('/search_books')
 @login_required
+@csrf.exempt  # Exempt for AJAX
 def search_books_route():
-    query = request.args.get('q', '')
-    if query:
-        books = search_books(query)
-        # Sanitize book data to prevent XSS
-        sanitized_books = []
-        for book in books:
-            sanitized_book = {
-                'id': book.get('id', ''),
-                'title': book.get('title', '').replace('<', '&lt;').replace('>', '&gt;'),
-                'authors': [author.replace('<', '&lt;').replace('>', '&gt;') for author in book.get('authors', [])],
-                'description': book.get('description', '').replace('<', '&lt;').replace('>', '&gt;'),
-                'cover_image': book.get('cover_image', ''),
-                'page_count': book.get('page_count', 0),
-                'genre': book.get('genre', '').replace('<', '&lt;').replace('>', '&gt;'),
-                'isbn': book.get('isbn', ''),
-                'published_date': book.get('published_date', '')
-            }
-            sanitized_books.append(sanitized_book)
-        return jsonify(sanitized_books)
-    return jsonify([])
+    try:
+        query = request.args.get('q', '')
+        logger.info(f"Search books query: {query}, Session ID: {session.sid if hasattr(session, 'sid') else 'None'}")
+        if query:
+            books = search_books(query)
+            sanitized_books = []
+            for book in books:
+                sanitized_book = {
+                    'id': book.get('id', ''),
+                    'title': book.get('title', '').replace('<', '&lt;').replace('>', '&gt;'),
+                    'authors': [author.replace('<', '&lt;').replace('>', '&gt;') for author in book.get('authors', [])],
+                    'description': book.get('description', '').replace('<', '&lt;').replace('>', '&gt;'),
+                    'cover_image': book.get('cover_image', ''),
+                    'page_count': book.get('page_count', 0),
+                    'genre': book.get('genre', '').replace('<', '&lt;').replace('>', '&gt;'),
+                    'isbn': book.get('isbn', ''),
+                    'published_date': book.get('published_date', '')
+                }
+                sanitized_books.append(sanitized_book)
+            ActivityLogger.log_activity(
+                user_id=ObjectId(current_user.id),
+                action='search_books',
+                description=f'Searched books with query: {query}',
+                metadata={'query': query, 'result_count': len(sanitized_books)}
+            )
+            return jsonify({
+                'books': sanitized_books,
+                'csrf_token': generate_csrf()
+            })
+        return jsonify({'books': [], 'csrf_token': generate_csrf()})
+    except Exception as e:
+        logger.error(f"Error in search_books: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Error searching books', 'csrf_token': generate_csrf()}), 500
 
 @nook_bp.route('/book/<book_id>')
 @login_required
@@ -469,7 +523,39 @@ def book_detail(book_id):
             'book_id': ObjectId(book_id)
         }).sort('date', -1))
         
-        return render_template('nook/book_detail.html', book=book, reading_sessions=reading_sessions)
+        # Instantiate forms
+        update_form = UpdateProgressForm()
+        rate_form = RateBookForm()
+        takeaway_form = AddTakeawayForm()
+        quote_form = AddQuoteForm()
+
+        # Pre-populate forms with existing data
+        update_form.current_page.data = book.get('current_page', 0)
+        rate_form.rating.data = book.get('rating', 0)
+        rate_form.review.data = book.get('review', '')
+
+        # Set CSRF tokens for all forms
+        update_form.csrf_token.data = generate_csrf()
+        rate_form.csrf_token.data = generate_csrf()
+        takeaway_form.csrf_token.data = generate_csrf()
+        quote_form.csrf_token.data = generate_csrf()
+        
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            action='view_book_detail',
+            description=f'Viewed details for book: {book["title"]}',
+            metadata={'book_id': book_id}
+        )
+        
+        return render_template(
+            'nook/book_detail.html',
+            book=book,
+            reading_sessions=reading_sessions,
+            update_form=update_form,
+            rate_form=rate_form,
+            takeaway_form=takeaway_form,
+            quote_form=quote_form
+        )
     except Exception as e:
         logger.error(f"Error loading book detail {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -490,82 +576,104 @@ def update_progress(book_id):
             flash('Book not found.', 'danger')
             return redirect(url_for('nook.book_detail', book_id=book_id))
         
-        if form.validate_on_submit():
-            current_page = form.current_page.data
-            session_notes = form.session_notes.data
-            duration_minutes = form.duration_minutes.data or 0
-            
-            old_page = book.get('current_page', 0)
-            pages_read = max(0, current_page - old_page)
-            
-            # Update progress
-            current_app.mongo.db.books.update_one(
-                {'_id': ObjectId(book_id)},
-                {'$set': {'current_page': current_page, 'last_read': datetime.utcnow()}}
-            )
-            
-            # Log reading session
-            session_data = {
-                'user_id': user_id,
-                'book_id': ObjectId(book_id),
-                'pages_read': pages_read,
-                'start_page': old_page,
-                'end_page': current_page,
-                'date': datetime.utcnow(),
-                'notes': session_notes,
-                'duration_minutes': duration_minutes
-            }
-            current_app.mongo.db.reading_sessions.insert_one(session_data)
-            
-            # Award points for reading progress
-            if pages_read > 0:
-                points = min(pages_read, 20)  # Max 20 points per session
-                RewardService.award_points(
-                    user_id=user_id,
-                    points=points,
-                    source='nook',
-                    description=f'Read {pages_read} pages in {book["title"]}',
-                    category='reading_progress',
-                    reference_id=str(book_id)
-                )
-            
-            # Check if book is finished
-            if current_page >= book['page_count'] and book['status'] != 'finished':
+        if request.method == 'POST':
+            logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
+            logger.info(f"Form Data: {request.form}")
+            if form.validate_on_submit():
+                current_page = form.current_page.data
+                session_notes = form.session_notes.data
+                duration_minutes = form.duration_minutes.data or 0
+                
+                old_page = book.get('current_page', 0)
+                pages_read = max(0, current_page - old_page)
+                
+                # Update progress
                 current_app.mongo.db.books.update_one(
                     {'_id': ObjectId(book_id)},
-                    {'$set': {'status': 'finished', 'finished_at': datetime.utcnow()}}
+                    {'$set': {'current_page': current_page, 'last_read': datetime.utcnow()}}
                 )
                 
-                # Award goal-based reward for book completion
-                RewardService.award_points(
+                # Log reading session
+                session_data = {
+                    'user_id': user_id,
+                    'book_id': ObjectId(book_id),
+                    'pages_read': pages_read,
+                    'start_page': old_page,
+                    'end_page': current_page,
+                    'date': datetime.utcnow(),
+                    'notes': session_notes,
+                    'duration_minutes': duration_minutes
+                }
+                current_app.mongo.db.reading_sessions.insert_one(session_data)
+                
+                ActivityLogger.log_activity(
                     user_id=user_id,
-                    points=50,
-                    source='nook',
-                    description=f'Finished reading "{book["title"]}"',
-                    category='book_completion',
-                    reference_id=str(book_id),
-                    goal_type='book_finished'
+                    action='update_progress',
+                    description=f'Updated reading progress for book: {book["title"]}',
+                    metadata={'book_id': book_id, 'pages_read': pages_read}
                 )
                 
-                # Award completion points
-                RewardService.award_points(
-                    user_id=user_id,
-                    points=50,
-                    source='nook',
-                    description=f'Finished reading: {book["title"]}',
-                    category='book_completion',
-                    reference_id=str(book_id)
-                )
+                # Award points for reading progress
+                if pages_read > 0:
+                    points = min(pages_read, 20)  # Max 20 points per session
+                    RewardService.award_points(
+                        user_id=user_id,
+                        points=points,
+                        source='nook',
+                        description=f'Read {pages_read} pages in {book["title"]}',
+                        category='reading_progress',
+                        reference_id=str(book_id)
+                    )
                 
-                flash('Congratulations! You finished the book! 🎉', 'success')
-            
-            flash('Progress updated!', 'success')
-            return redirect(url_for('nook.book_detail', book_id=book_id))
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Error in {field}: {error}", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+                # Check if book is finished
+                if current_page >= book['page_count'] and book['status'] != 'finished':
+                    current_app.mongo.db.books.update_one(
+                        {'_id': ObjectId(book_id)},
+                        {'$set': {'status': 'finished', 'finished_at': datetime.utcnow()}}
+                    )
+                    
+                    ActivityLogger.log_activity(
+                        user_id=user_id,
+                        action='book_completion',
+                        description=f'Finished book: {book["title"]}',
+                        metadata={'book_id': book_id}  # Fixed typo from 'book bod' to 'book_id'
+                    )
+                    
+                    # Award goal-based reward for book completion
+                    RewardService.award_points(
+                        user_id=user_id,
+                        points=50,
+                        source='nook',
+                        description=f'Finished reading "{book["title"]}"',
+                        category='book_completion',
+                        reference_id=str(book_id),
+                        goal_type='book_finished'
+                    )
+                    
+                    # Award completion points
+                    RewardService.award_points(
+                        user_id=user_id,
+                        points=50,
+                        source='nook',
+                        description=f'Finished reading: {book["title"]}',
+                        category='book_completion',
+                        reference_id=str(book_id)
+                    )
+                    
+                    flash('Congratulations! You finished the book! 🎉', 'success')
+                
+                flash('Progress updated!', 'success')
+                return redirect(url_for('nook.book_detail', book_id=book_id))
+            else:
+                logger.error(f"Form validation failed: {form.errors}")
+                if 'csrf_token' in form.errors:
+                    logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                    flash("CSRF token error: Please refresh the page and try again.", "danger")
+                else:
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            flash(f"Error in {field}: {error}", "danger")
+                return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
         logger.error(f"Error updating progress for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -577,36 +685,51 @@ def add_takeaway(book_id):
     form = AddTakeawayForm()
     try:
         user_id = ObjectId(current_user.id)
-        if form.validate_on_submit():
-            takeaway_data = {
-                'text': form.takeaway.data,
-                'page_reference': form.page_reference.data,
-                'date': datetime.utcnow(),
-                'id': str(ObjectId())
-            }
-            
-            current_app.mongo.db.books.update_one(
-                {'_id': ObjectId(book_id), 'user_id': user_id},
-                {'$push': {'key_takeaways': takeaway_data}}
-            )
-            
-            # Award points for adding takeaway
-            RewardService.award_points(
-                user_id=user_id,
-                points=3,
-                source='nook',
-                description='Added key takeaway',
-                category='content_creation',
-                reference_id=str(book_id)
-            )
-            
-            flash('Key takeaway added!', 'success')
-            return redirect(url_for('nook.book_detail', book_id=book_id))
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Error in {field}: {error}", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        if request.method == 'POST':
+            logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
+            logger.info(f"Form Data: {request.form}")
+            if form.validate_on_submit():
+                takeaway_data = {
+                    'text': form.takeaway.data,
+                    'page_reference': form.page_reference.data,
+                    'date': datetime.utcnow(),
+                    'id': str(ObjectId())
+                }
+                
+                current_app.mongo.db.books.update_one(
+                    {'_id': ObjectId(book_id), 'user_id': user_id},
+                    {'$push': {'key_takeaways': takeaway_data}}
+                )
+                
+                ActivityLogger.log_activity(
+                    user_id=user_id,
+                    action='add_takeaway',
+                    description=f'Added key takeaway for book: {book_id}',
+                    metadata={'book_id': book_id, 'takeaway': form.takeaway.data}
+                )
+                
+                # Award points for adding takeaway
+                RewardService.award_points(
+                    user_id=user_id,
+                    points=3,
+                    source='nook',
+                    description='Added key takeaway',
+                    category='content_creation',
+                    reference_id=str(book_id)
+                )
+                
+                flash('Key takeaway added!', 'success')
+                return redirect(url_for('nook.book_detail', book_id=book_id))
+            else:
+                logger.error(f"Form validation failed: {form.errors}")
+                if 'csrf_token' in form.errors:
+                    logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                    flash("CSRF token error: Please refresh the page and try again.", "danger")
+                else:
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            flash(f"Error in {field}: {error}", "danger")
+                return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
         logger.error(f"Error adding takeaway for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -618,45 +741,52 @@ def add_quote(book_id):
     form = AddQuoteForm()
     try:
         user_id = ObjectId(current_user.id)
-        if form.validate_on_submit():
-            quote_data = {
-                'text': form.quote.data,
-                'page': form.page.data,
-                'context': form.context.data,
-                'date': datetime.utcnow(),
-                'id': str(ObjectId())
-            }
-            
-            current_app.mongo.db.books.update_one(
-                {'_id': ObjectId(book_id), 'user_id': user_id},
-                {'$push': {'quotes': quote_data}}
-            )
-            
-            # Log quote submission
-            current_app.activity_logger.log_activity(
-                user_id=user_id,
-                action='quote_submission',
-                description=f'Submitted quote for book: {book_id}',
-                metadata={'book_id': book_id, 'quote': form.quote.data}
-            )
-            
-            # Award points for adding quote
-            RewardService.award_points(
-                user_id=user_id,
-                points=2,
-                source='nook',
-                description='Added quote',
-                category='content_creation',
-                reference_id=str(book_id)
-            )
-            
-            flash('Quote added!', 'success')
-            return redirect(url_for('nook.book_detail', book_id=book_id))
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Error in {field}: {error}", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        if request.method == 'POST':
+            logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
+            logger.info(f"Form Data: {request.form}")
+            if form.validate_on_submit():
+                quote_data = {
+                    'text': form.quote.data,
+                    'page': form.page.data,
+                    'context': form.context.data,
+                    'date': datetime.utcnow(),
+                    'id': str(ObjectId())
+                }
+                
+                current_app.mongo.db.books.update_one(
+                    {'_id': ObjectId(book_id), 'user_id': user_id},
+                    {'$push': {'quotes': quote_data}}
+                )
+                
+                ActivityLogger.log_activity(
+                    user_id=user_id,
+                    action='quote_submission',
+                    description=f'Submitted quote for book: {book_id}',
+                    metadata={'book_id': book_id, 'quote': form.quote.data}
+                )
+                
+                # Award points for adding quote
+                RewardService.award_points(
+                    user_id=user_id,
+                    points=2,
+                    source='nook',
+                    description='Added quote',
+                    category='content_creation',
+                    reference_id=str(book_id)
+                )
+                
+                flash('Quote added!', 'success')
+                return redirect(url_for('nook.book_detail', book_id=book_id))
+            else:
+                logger.error(f"Form validation failed: {form.errors}")
+                if 'csrf_token' in form.errors:
+                    logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                    flash("CSRF token error: Please refresh the page and try again.", "danger")
+                else:
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            flash(f"Error in {field}: {error}", "danger")
+                return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
         logger.error(f"Error adding quote for book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -668,33 +798,48 @@ def rate_book(book_id):
     form = RateBookForm()
     try:
         user_id = ObjectId(current_user.id)
-        if form.validate_on_submit():
-            current_app.mongo.db.books.update_one(
-                {'_id': ObjectId(book_id), 'user_id': user_id},
-                {'$set': {
-                    'rating': form.rating.data,
-                    'review': form.review.data,
-                    'rated_at': datetime.utcnow()
-                }}
-            )
-            
-            # Award points for rating
-            RewardService.award_points(
-                user_id=user_id,
-                points=5,
-                source='nook',
-                description='Rated a book',
-                category='engagement',
-                reference_id=str(book_id)
-            )
-            
-            flash('Book rated successfully!', 'success')
-            return redirect(url_for('nook.book_detail', book_id=book_id))
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Error in {field}: {error}", "danger")
-            return redirect(url_for('nook.book_detail', book_id=book_id))
+        if request.method == 'POST':
+            logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
+            logger.info(f"Form Data: {request.form}")
+            if form.validate_on_submit():
+                current_app.mongo.db.books.update_one(
+                    {'_id': ObjectId(book_id), 'user_id': user_id},
+                    {'$set': {
+                        'rating': form.rating.data,
+                        'review': form.review.data,
+                        'rated_at': datetime.utcnow()
+                    }}
+                )
+                
+                ActivityLogger.log_activity(
+                    user_id=user_id,
+                    action='rate_book',
+                    description=f'Rated book: {book_id}',
+                    metadata={'book_id': book_id, 'rating': form.rating.data}
+                )
+                
+                # Award points for rating
+                RewardService.award_points(
+                    user_id=user_id,
+                    points=5,
+                    source='nook',
+                    description='Rated a book',
+                    category='engagement',
+                    reference_id=str(book_id)
+                )
+                
+                flash('Book rated successfully!', 'success')
+                return redirect(url_for('nook.book_detail', book_id=book_id))
+            else:
+                logger.error(f"Form validation failed: {form.errors}")
+                if 'csrf_token' in form.errors:
+                    logger.error(f"CSRF validation failed: {form.csrf_token.errors}")
+                    flash("CSRF token error: Please refresh the page and try again.", "danger")
+                else:
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            flash(f"Error in {field}: {error}", "danger")
+                return redirect(url_for('nook.book_detail', book_id=book_id))
     except Exception as e:
         logger.error(f"Error rating book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
@@ -730,6 +875,13 @@ def library():
         # Get unique genres for filter
         all_books = list(current_app.mongo.db.books.find({'user_id': user_id}))
         genres = list(set([book.get('genre', '') for book in all_books if book.get('genre')]))
+        
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            action='view_library',
+            description='Viewed filtered library',
+            metadata={'status_filter': status_filter, 'genre_filter': genre_filter, 'sort_by': sort_by}
+        )
         
         return render_template('nook/library.html', 
                              books=books, 
@@ -778,6 +930,13 @@ def analytics():
         if rated_books:
             analytics_data['avg_rating'] = sum([book['rating'] for book in rated_books]) / len(rated_books)
         
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            action='view_analytics',
+            description='Viewed reading analytics',
+            metadata={'total_books': len(books), 'total_sessions': len(sessions)}
+        )
+        
         return render_template('nook/analytics.html', analytics=analytics_data)
     except Exception as e:
         logger.error(f"Error loading analytics: {str(e)}", exc_info=True)
@@ -807,7 +966,15 @@ def calculate_reading_streak(user_id):
             streak += 1
             current_date -= timedelta(days=1)
         
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            action='calculate_streak',
+            description='Calculated reading streak',
+            metadata={'streak': streak}
+        )
+        
         return streak
     except Exception as e:
         logger.error(f"Error calculating reading streak for user {user_id}: {str(e)}", exc_info=True)
         return 0
+

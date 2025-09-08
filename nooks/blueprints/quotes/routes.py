@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
+from flask_wtf.csrf import generate_csrf
 from bson import ObjectId
 from datetime import datetime
 import logging
@@ -55,15 +56,18 @@ def index():
 def submit_quote():
     """Submit a new quote for verification"""
     if request.method == 'GET':
-        # Get user's books for the form
         try:
             user_id = ObjectId(current_user.id)
+            # Fetch books using BookModel or direct MongoDB query
             books = list(current_app.mongo.db.books.find({
                 'user_id': user_id,
                 'status': {'$in': ['reading', 'finished']}
             }).sort('title', 1))
             
-            return render_template('quotes/submit.html', books=books)
+            # Log the number of books found for debugging
+            logger.debug(f"Fetched {len(books)} books for user {user_id}")
+            
+            return render_template('quotes/submit.html', books=books, csrf_token=generate_csrf())
             
         except Exception as e:
             logger.error(f"Error loading submit quote page: {str(e)}")
@@ -94,6 +98,15 @@ def submit_quote():
             flash('Page number must be positive.', 'error')
             return redirect(url_for('quotes.submit_quote'))
         
+        # Verify book belongs to user
+        book = current_app.mongo.db.books.find_one({
+            '_id': ObjectId(book_id),
+            'user_id': ObjectId(user_id)
+        })
+        if not book:
+            flash('Selected book not found in your library.', 'error')
+            return redirect(url_for('quotes.submit_quote'))
+        
         # Submit quote
         quote_id, error = QuoteModel.submit_quote(
             user_id=user_id,
@@ -121,14 +134,31 @@ def search_books():
     try:
         query = request.args.get('q', '').strip()
         if not query:
-            return jsonify({'books': []})
+            return jsonify({'books': [], 'csrf_token': generate_csrf()})
         
         books = GoogleBooksAPI.search_books(query, max_results=10)
-        return jsonify({'books': books})
+        sanitized_books = []
+        for book in books:
+            sanitized_book = {
+                'id': book.get('google_id', ''),  # Use 'google_id' to match add_book
+                'title': book.get('title', '').replace('<', '&lt;').replace('>', '&gt;'),
+                'authors': [author.replace('<', '&lt;').replace('>', '&gt;') for author in book.get('authors', [])],
+                'description': book.get('description', '').replace('<', '&lt;').replace('>', '&gt;'),
+                'cover_url': book.get('cover_url', ''),
+                'page_count': book.get('page_count', 0),
+                'genre': book.get('genre', '').replace('<', '&lt;').replace('>', '&gt;'),
+                'isbn': book.get('isbn', ''),
+                'published_date': book.get('published_date', '')
+            }
+            sanitized_books.append(sanitized_book)
+        
+        # Log the number of books found for debugging
+        logger.debug(f"Found {len(sanitized_books)} books for query: {query}")
+        return jsonify({'books': sanitized_books, 'csrf_token': generate_csrf()})
         
     except Exception as e:
         logger.error(f"Error searching books: {str(e)}")
-        return jsonify({'error': 'Failed to search books'}), 500
+        return jsonify({'error': 'Failed to search books', 'csrf_token': generate_csrf()}), 500
 
 @quotes_bp.route('/add-book', methods=['POST'])
 @login_required
@@ -146,6 +176,20 @@ def add_book():
         if not book_details:
             return jsonify({'error': 'Book not found'}), 404
         
+        # Check for duplicate book
+        existing_book = current_app.mongo.db.books.find_one({
+            'user_id': ObjectId(user_id),
+            'title': book_details['title'],
+            'authors': book_details['authors']
+        })
+        if existing_book:
+            return jsonify({
+                'success': True,
+                'book_id': str(existing_book['_id']),
+                'message': 'Book already in your library!',
+                'title': existing_book['title']
+            })
+        
         # Create book in user's library
         book_id = BookModel.create_book(
             user_id=user_id,
@@ -162,7 +206,8 @@ def add_book():
             return jsonify({
                 'success': True,
                 'book_id': str(book_id),
-                'message': 'Book added to your library!'
+                'message': 'Book added to your library!',
+                'title': book_details['title']
             })
         else:
             return jsonify({'error': 'Failed to add book'}), 500
@@ -200,7 +245,6 @@ def transactions():
         flash('An error occurred while loading your transactions.', 'error')
         return redirect(url_for('quotes.index'))
 
-# Admin routes for quote verification
 @quotes_bp.route('/admin/pending')
 @admin_required
 def admin_pending():
@@ -231,7 +275,7 @@ def admin_verify_quote(quote_id):
     """Admin endpoint to verify or reject a quote"""
     try:
         admin_id = str(current_user.id)
-        action = request.json.get('action')  # 'approve' or 'reject'
+        action = request.json.get('action')
         rejection_reason = request.json.get('rejection_reason', '')
         
         if action not in ['approve', 'reject']:
@@ -262,7 +306,7 @@ def admin_bulk_verify():
     try:
         admin_id = str(current_user.id)
         quote_ids = request.json.get('quote_ids', [])
-        action = request.json.get('action')  # 'approve' or 'reject'
+        action = request.json.get('action')
         rejection_reason = request.json.get('rejection_reason', '')
         
         if not quote_ids or action not in ['approve', 'reject']:
