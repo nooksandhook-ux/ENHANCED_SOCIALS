@@ -15,32 +15,30 @@
   </div>
 </div>
 {% block extra_scripts %}
-<style>
-.admin-actions {
-  position: relative; /* Ensure menu is positioned absolutely within this */
-}
-.admin-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  white-space: nowrap;
-  z-index: 1000;
-  display: none;
-  background: #fff;
-  border: 1px solid #ddd;
-  padding: 4px 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.admin-menu.show {
-  display: block;
-}
-.admin-menu.right-adjust {
-  left: auto;
-  right: 0;
-}
-</style>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
+function setupAdminMenuListeners() {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.admin-menu-btn');
+    if (btn) {
+      e.stopPropagation();
+      const menu = btn.nextElementSibling;
+      if (menu && menu.classList.contains('admin-menu')) {
+        document.querySelectorAll('.admin-menu.show').forEach(openMenu => {
+          if (openMenu !== menu) {
+            openMenu.classList.remove('show');
+          }
+        });
+        menu.classList.toggle('show');
+      }
+    } else {
+      document.querySelectorAll('.admin-menu.show').forEach(menu => {
+        menu.classList.remove('show');
+      });
+    }
+  });
+}
+
 const socket = io();
 socket.on('connect', () => {
   socket.emit('join_club', { club_id: '{{ club_id }}', user_id: '{{ current_user.id }}', username: '{{ current_user.username }}' });
@@ -50,19 +48,18 @@ socket.on('chat_message', (data) => {
   const message = document.createElement('div');
   message.className = 'p-2 position-relative';
   message.innerHTML = `
+    <p>${data.message} <small class="text-muted">by ${data.username}</small></p>
+    {% if is_admin %}
     <div class="admin-actions">
-      <p>${data.message} <small class="text-muted">by ${data.username}</small></p>
-      {% if is_admin %}
       <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
       <div class="admin-menu">
         <button class="btn btn-danger btn-sm" onclick="deleteMessage('${data.message_id}')">Delete</button>
       </div>
-      {% endif %}
     </div>
+    {% endif %}
   `;
   chatBox.appendChild(message);
   chatBox.scrollTop = chatBox.scrollHeight;
-  adjustAdminMenus();
 });
 function loadMessages() {
   fetch('{{ url_for("nooks_club.api_get_club_chat", club_id=club_id) }}')
@@ -75,20 +72,19 @@ function loadMessages() {
           const message = document.createElement('div');
           message.className = 'p-2 position-relative';
           message.innerHTML = `
+            <p>${msg.message} <small class="text-muted">by ${msg.username}</small></p>
+            {% if is_admin %}
             <div class="admin-actions">
-              <p>${msg.message} <small class="text-muted">by ${msg.username}</small></p>
-              {% if is_admin %}
               <button class="btn btn-sm btn-outline-secondary admin-menu-btn">...</button>
               <div class="admin-menu">
                 <button class="btn btn-danger btn-sm" onclick="deleteMessage('${msg._id}')">Delete</button>
               </div>
-              {% endif %}
             </div>
+            {% endif %}
           `;
           chatBox.appendChild(message);
         });
         chatBox.scrollTop = chatBox.scrollHeight;
-        adjustAdminMenus();
       }
     })
     .catch(error => console.error('Error fetching messages:', error));
@@ -142,46 +138,9 @@ document.getElementById('chat-form').addEventListener('submit', (e) => {
       .catch(error => console.error('Error sending message:', error));
   }
 });
-
-// Adjust admin menu position to avoid screen clipping
-function adjustAdminMenus() {
-  document.querySelectorAll('.admin-menu').forEach(menu => {
-    menu.classList.remove('right-adjust');
-    const rect = menu.getBoundingClientRect();
-    if (rect.right > window.innerWidth) {
-      menu.classList.add('right-adjust');
-    }
-    if (rect.bottom > window.innerHeight) {
-      // If needed you could also add a 'bottom-adjust' class and handle with CSS
-      menu.style.top = 'auto';
-      menu.style.bottom = '100%';
-    } else {
-      menu.style.top = '100%';
-      menu.style.bottom = 'auto';
-    }
-  });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   loadMessages();
-  document.querySelectorAll('.admin-menu-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const menu = btn.nextElementSibling; // assumes menu is right after button
-      if(menu) {
-        menu.classList.toggle('show');
-        adjustAdminMenus();
-      }
-    });
-  });
-  // Close menus if clicked outside
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.admin-menu.show').forEach(menu => {
-      menu.classList.remove('show');
-    });
-  });
-  // Re-adjust on resize
-  window.addEventListener('resize', adjustAdminMenus);
+  setupAdminMenuListeners();
 });
 </script>
 {% endblock %}

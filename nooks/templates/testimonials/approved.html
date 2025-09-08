@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center fw-bold text-primary mb-4">Approved Testimonials</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} mb-4">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if testimonials %}
+        <div class="row g-3">
+            {% for testimonial in testimonials %}
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <p class="card-text">"{{ testimonial.content }}"</p>
+                            <p class="card-text text-muted">
+                                <small>By {{ testimonial.user_id | get_username }} on {{ testimonial.approved_at | datetimeformat }}</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted text-center">No approved testimonials available.</p>
+    {% endif %}
+
+    {% if current_user.is_authenticated %}
+        <div class="text-center mt-4">
+            <a href="{{ url_for('testimonials.submit_testimonial') }}" class="btn btn-primary">Submit Your Testimonial</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -28,7 +28,7 @@
                         <a href="{{ url_for('nook.index') }}" class="btn btn-success btn-lg">
                             <span><i class="bi bi-book-half me-2"></i>Start Reading</span>
                         </a>
-                        <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success">
+                        <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success" id="nook-add-book">
                             <span><i class="bi bi-plus-circle me-2"></i>Add a Book</span>
                         </a>
                     </div>
@@ -150,7 +150,7 @@
                 </a>
             </div>
             <div class="col-md-4">
-                <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success quick-actions w-100">
+                <a href="{{ url_for('nook.add_book') }}" class="btn btn-outline-success quick-actions w-100" id="quick-add-book">
                     <span><i class="bi bi-plus-circle me-2"></i>Add New Book</span>
                 </a>
             </div>
@@ -158,6 +158,102 @@
                 <a href="{{ url_for('hook.timer') }}" class="btn btn-outline-info quick-actions w-100">
                     <span><i class="bi bi-play-circle me-2"></i>Start Focus Session</span>
                 </a>
+            </div>
+        </div>
+        <!-- More Accordion -->
+        <div class="accordion mt-4" id="moreAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="moreHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#moreCollapse" aria-expanded="false" aria-controls="moreCollapse">
+                        More
+                    </button>
+                </h2>
+                <div id="moreCollapse" class="accordion-collapse collapse" aria-labelledby="moreHeading" data-bs-parent="#moreAccordion">
+                    <div class="accordion-body">
+                        <!-- Transparency Dashboard Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h3 class="mb-3">Transparency Dashboard</h3>
+                                <p class="text-center text-muted mb-4">
+                                    See how your support impacts Nooks' mission to promote literacy and productivity.
+                                </p>
+                                {% if error %}
+                                    <div class="alert alert-danger">{{ error }}</div>
+                                {% else %}
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="card h-100 shadow-sm border-0">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">Total Donations</h5>
+                                                    <p class="card-text display-4">₦{{ total_donations | default(0) | int }}</p>
+                                                    <p class="text-muted">{{ donation_count | default(0) }} contributions</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card h-100 shadow-sm border-0">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">Verified Quotes</h5>
+                                                    <p class="card-text display-4">{{ verified_quotes | default(0) }}</p>
+                                                    <p class="text-muted">Inspirational insights shared</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card h-100 shadow-sm border-0">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">Active Users</h5>
+                                                    <p class="card-text display-4">{{ active_users | default(0) }}</p>
+                                                    <p class="text-muted">Last 30 days</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <div class="card shadow-sm border-0">
+                                                <div class="card-body">
+                                                    <h5 class="card-title">Donation Breakdown by Tier</h5>
+                                                    <canvas id="tierChart" height="100"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a href="{{ url_for('analytics.export_report') }}" class="btn btn-primary">Download Impact Report</a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <!-- Testimonials Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h3 class="mb-3">What Our Community Says</h3>
+                                <div class="row g-3">
+                                    {% for testimonial in testimonials | default([]) %}
+                                    <div class="col-md-4">
+                                        <div class="card h-100 shadow-sm border-0">
+                                            <div class="card-body">
+                                                <p class="card-text">"{{ testimonial.content | truncate(150) | default('No content available') }}"</p>
+                                                <p class="card-text text-muted">
+                                                    <small>
+                                                        <i class="bi bi-person-circle me-1"></i>
+                                                        {{ testimonial.user_id | get_username | default('Anonymous') }} on {{ testimonial.approved_at | datetimeformat | default('Unknown date') }}
+                                                    </small>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="col-12">
+                                        <p class="text-muted">No testimonials available. Be the first to <a href="{{ url_for('testimonials.submit_testimonial') }}">share your story</a>!</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -172,4 +268,95 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Debounce function to limit click frequency
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Handle clicks on "Add a Book" links with debouncing
+function handleAddBookClick(event, linkId) {
+    event.preventDefault();
+    const button = document.getElementById(linkId);
+    console.log(`Clicked Add a Book: ${linkId}`);
+    button.classList.add('disabled');
+    button.style.pointerEvents = 'none';
+    window.location.href = button.href;
+    setTimeout(() => {
+        button.classList.remove('disabled');
+        button.style.pointerEvents = 'auto';
+    }, 2000); // Re-enable after 2 seconds
+}
+
+document.getElementById('nook-add-book')?.addEventListener('click', debounce((event) => {
+    handleAddBookClick(event, 'nook-add-book');
+}, 1000));
+
+document.getElementById('quick-add-book')?.addEventListener('click', debounce((event) => {
+    handleAddBookClick(event, 'quick-add-book');
+}, 1000));
+
+// Chart.js for Donation Breakdown
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('tierChart')?.getContext('2d');
+    if (ctx) {
+        const tierData = {
+            labels: ['Bronze', 'Silver', 'Gold'],
+            datasets: [{
+                label: 'Donation Amounts (NGN)',
+                data: [
+                    {{ tier_data.bronze.total | default(0) }},
+                    {{ tier_data.silver.total | default(0) }},
+                    {{ tier_data.gold.total | default(0) }}
+                ],
+                backgroundColor: ['#cd7f32', '#c0c0c0', '#ffd700'],
+                borderColor: ['#8b4513', '#808080', '#b8860b'],
+                borderWidth: 1
+            }]
+        };
+        new Chart(ctx, {
+            type: 'bar',
+            data: tierData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Amount (NGN)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+});
+
+// Log frontend errors
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error(`Frontend error: ${message} at ${source}:${lineno}:${colno}`);
+    fetch('/log_error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, source, lineno, colno, error: error?.stack })
+    });
+};
+</script>
 {% endblock %}

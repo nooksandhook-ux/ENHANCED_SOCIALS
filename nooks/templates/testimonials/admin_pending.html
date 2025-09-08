@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center fw-bold text-primary mb-4">Pending Testimonials</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} mb-4">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if testimonials %}
+        <div class="row g-3">
+            {% for testimonial in testimonials %}
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <p class="card-text">"{{ testimonial.content }}"</p>
+                            <p class="card-text text-muted">
+                                <small>
+                                    Submitted by: {{ testimonial.user_id | get_username }}<br>
+                                    Submitted on {{ testimonial.created_at | datetimeformat }}
+                                </small>
+                            </p>
+                            <div class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('testimonials.approve_testimonial', testimonial_id=testimonial._id) }}">
+                                    {{ form.csrf_token if form else '' }}
+                                    <button type="submit" class="btn btn-success">Approve</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('testimonials.reject_testimonial', testimonial_id=testimonial._id) }}">
+                                    {{ form.csrf_token if form else '' }}
+                                    <div class="mb-3">
+                                        <label for="rejection_reason_{{ testimonial._id }}" class="form-label">Rejection Reason</label>
+                                        <textarea class="form-control" id="rejection_reason_{{ testimonial._id }}" name="rejection_reason" rows="3"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted text-center">No pending testimonials to review.</p>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('testimonials.statistics') }}" class="btn btn-primary">View Statistics</a>
+    </div>
+</div>
+{% endblock %}

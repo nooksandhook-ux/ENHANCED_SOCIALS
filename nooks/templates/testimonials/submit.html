@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center fw-bold text-primary mb-4">Submit a Testimonial</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} mb-4">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('testimonials.submit_testimonial') }}">
+        {{ form.csrf_token if form else '' }}
+        <div class="mb-3">
+            <label for="content" class="form-label">Your Testimonial</label>
+            <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a href="{{ url_for('testimonials.my_testimonials') }}" class="btn btn-outline-primary">View My Testimonials</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

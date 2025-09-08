@@ -78,6 +78,11 @@
                             <i class="bi bi-people"></i> Nooks Club
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('donations.donate') }}">
+                            <i class="bi bi-heart-fill"></i> Donate
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
                 
@@ -152,6 +157,9 @@
                 <li class="list-inline-item">
                     <a href="{{ url_for('general.fair_use') }}" class="text-muted text-decoration-none">Fair Use</a>
                 </li>
+                <li class="list-inline-item">
+                    <a href="{{ url_for('donations.donate') }}" class="text-muted text-decoration-none">Donate</a>
+                </li>
             </ul>
             <p class="mb-0">&copy; 2025 Nooks. Track your reading and productivity.</p>
         </div>
@@ -159,10 +167,7 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    
+        
     {% block extra_scripts %}{% endblock %}
     
     <!-- Start of Tawk.to Script -->
@@ -180,3 +185,7 @@
     <!-- End of Tawk.to Script -->
 </body>
 </html>
+
+
+
+

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center fw-bold text-primary mb-4">My Testimonials</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} mb-4">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if testimonials %}
+        <div class="row g-3">
+            {% for testimonial in testimonials %}
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <p class="card-text">"{{ testimonial.content }}"</p>
+                            <p class="card-text text-muted">
+                                <small>
+                                    Status: {{ testimonial.status | capitalize }}<br>
+                                    Submitted on {{ testimonial.created_at | datetimeformat }}
+                                    {% if testimonial.status == 'rejected' and testimonial.rejection_reason %}
+                                        <br>Reason: {{ testimonial.rejection_reason }}
+                                    {% endif %}
+                                </small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted text-center">You have not submitted any testimonials.</p>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('testimonials.submit_testimonial') }}" class="btn btn-primary">Submit New Testimonial</a>
+    </div>
+</div>
+{% endblock %}
