@@ -259,7 +259,7 @@ def edit_book(book_id):
         book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
         if not book:
             flash('Book not found.', 'danger')
-            return redirect(url_for('nook.my_uploads'))
+            return redirect(url_for('nook.manage_library'))
         
         if request.method == 'POST':
             logger.info(f"Received CSRF Token: {request.form.get('csrf_token')}")
@@ -310,7 +310,7 @@ def edit_book(book_id):
                     metadata={'book_id': book_id}
                 )
                 flash('Book updated successfully!', 'success')
-                return redirect(url_for('nook.my_uploads'))
+                return redirect(url_for('nook.manage_library'))
             else:
                 logger.error(f"Form validation failed: {form.errors}")
                 if 'csrf_token' in form.errors:
@@ -346,7 +346,7 @@ def delete_book(book_id):
         book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
         if not book:
             flash('Book not found.', 'danger')
-            return redirect(url_for('nook.my_uploads'))
+            return redirect(url_for('nook.manage_library'))
 
         if form.validate_on_submit():
             # Delete associated PDF file if it exists
@@ -382,7 +382,7 @@ def delete_book(book_id):
             )
 
             flash('Book deleted successfully!', 'success')
-            return redirect(url_for('nook.my_uploads'))
+            return redirect(url_for('nook.manage_library'))
         else:
             logger.error(f"Form validation failed: {form.errors}")
             if 'csrf_token' in form.errors:
@@ -392,11 +392,11 @@ def delete_book(book_id):
                 for field, errors in form.errors.items():
                     for error in errors:
                         flash(f"Error: {error}", "danger")
-            return redirect(url_for('nook.my_uploads'))
+            return redirect(url_for('nook.manage_library'))
     except Exception as e:
         logger.error(f"Error deleting book {book_id}: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
-        return redirect(url_for('nook.my_uploads'))
+        return redirect(url_for('nook.manage_library'))
 
 @nook_bp.route('/serve_pdf/<book_id>')
 @login_required
@@ -406,35 +406,56 @@ def serve_pdf(book_id):
         # Fetch user to check admin status
         user = current_app.mongo.db.users.find_one({'_id': user_id})
         if not user:
+            logger.error(f"User not found: {user_id}")
             flash("User not found.", "danger")
             return redirect(url_for('nook.book_detail', book_id=book_id))
         
         book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id)})
         if not book or not book.get('pdf_path'):
+            logger.error(f"Book {book_id} not found or no PDF path associated")
             flash('PDF not available for this book.', 'danger')
             return redirect(url_for('nook.book_detail', book_id=book_id))
         
         # Restrict access to owner or admin
         if not (book['user_id'] == user_id or user.get('is_admin', False)):
+            logger.error(f"User {user_id} does not have permission to access PDF for book {book_id}")
             flash('You do not have permission to view this file.', 'danger')
             return redirect(url_for('nook.book_detail', book_id=book_id))
         
         pdf_path_full = os.path.join(current_app.root_path, 'static', book['pdf_path'])
+        logger.info(f"Attempting to serve PDF: {pdf_path_full}")
         if not os.path.exists(pdf_path_full):
+            logger.error(f"PDF file does not exist at path: {pdf_path_full}")
             flash('PDF file not found.', 'danger')
             return redirect(url_for('nook.book_detail', book_id=book_id))
         
+        # Verify file readability
+        try:
+            with open(pdf_path_full, 'rb') as f:
+                encrypted_pdf = f.read()
+                if not encrypted_pdf:
+                    logger.error(f"PDF file at {pdf_path_full} is empty")
+                    flash('PDF file is empty or corrupted.', 'danger')
+                    return redirect(url_for('nook.book_detail', book_id=book_id))
+        except Exception as e:
+            logger.error(f"Error reading PDF file at {pdf_path_full}: {str(e)}")
+            flash('Error accessing PDF file.', 'danger')
+            return redirect(url_for('nook.book_detail', book_id=book_id))
+        
         # Decrypt PDF
-        with open(pdf_path_full, 'rb') as f:
-            encrypted_pdf = f.read()
-        decrypted_pdf = fernet.decrypt(encrypted_pdf)
+        try:
+            decrypted_pdf = fernet.decrypt(encrypted_pdf)
+        except Exception as e:
+            logger.error(f"Error decrypting PDF for book {book_id}: {str(e)}")
+            flash('Error decrypting PDF file.', 'danger')
+            return redirect(url_for('nook.book_detail', book_id=book_id))
         
         # Log access
         ActivityLogger.log_activity(
             user_id=user_id,
             action='pdf_access',
             description=f'Accessed PDF for book: {book["title"]}',
-            metadata={'book_id': book_id}
+            metadata={'book_id': book_id, 'pdf_path': book['pdf_path']}
         )
 
         return send_file(
@@ -447,21 +468,24 @@ def serve_pdf(book_id):
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.book_detail', book_id=book_id))
 
-@nook_bp.route('/my_uploads')
+@nook_bp.route('/manage_library')
 @login_required
-def my_uploads():
+def manage_library():
     try:
         user_id = ObjectId(current_user.id)
-        books = list(current_app.mongo.db.books.find({'user_id': user_id, 'pdf_path': {'$ne': None}}).sort('added_at', -1))
+        # Fetch all books for the user
+        books = list(current_app.mongo.db.books.find({'user_id': user_id}).sort('added_at', -1))
+        delete_form = DeleteBookForm()  # Initialize DeleteBookForm
+        delete_form.csrf_token.data = generate_csrf()  # Set CSRF token
         ActivityLogger.log_activity(
             user_id=user_id,
-            action='view_uploads',
-            description='Viewed uploaded books',
+            action='view_library',
+            description='Viewed all books in library',
             metadata={'book_count': len(books)}
         )
-        return render_template('nook/my_uploads.html', books=books)
+        return render_template('nook/manage_library.html', books=books, delete_form=delete_form)
     except Exception as e:
-        logger.error(f"Error loading my_uploads: {str(e)}", exc_info=True)
+        logger.error(f"Error loading manage_library: {str(e)}", exc_info=True)
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('nook.index'))
 
@@ -636,7 +660,7 @@ def update_progress(book_id):
                         user_id=user_id,
                         action='book_completion',
                         description=f'Finished book: {book["title"]}',
-                        metadata={'book_id': book_id}  # Fixed typo from 'book bod' to 'book_id'
+                        metadata={'book_id': book_id}
                     )
                     
                     # Award goal-based reward for book completion
@@ -978,3 +1002,85 @@ def calculate_reading_streak(user_id):
         logger.error(f"Error calculating reading streak for user {user_id}: {str(e)}", exc_info=True)
         return 0
 
+@nook_bp.route('/update_progress_ajax/<book_id>', methods=['POST'])
+@login_required
+def update_progress_ajax(book_id):
+    try:
+        user_id = ObjectId(current_user.id)
+        book = current_app.mongo.db.books.find_one({'_id': ObjectId(book_id), 'user_id': user_id})
+        if not book:
+            return jsonify({'success': False, 'error': 'Book not found'}), 404
+
+        form = UpdateProgressForm(data=request.get_json())
+        if not form.validate():
+            return jsonify({'success': False, 'errors': form.errors}), 400
+
+        current_page = form.current_page.data
+        session_notes = form.session_notes.data
+        duration_minutes = form.duration_minutes.data or 0
+
+        old_page = book.get('current_page', 0)
+        pages_read = max(0, current_page - old_page)
+
+        # Update book progress
+        update = {
+            'current_page': current_page,
+            'last_read': datetime.utcnow()
+        }
+        if book.get('page_count') and current_page >= book['page_count'] and book['status'] != 'finished':
+            update['status'] = 'finished'
+            update['finished_at'] = datetime.utcnow()
+        else:
+            update['status'] = 'reading'
+
+        current_app.mongo.db.books.update_one({'_id': ObjectId(book_id)}, {'$set': update})
+
+        # Log reading session
+        session_data = {
+            'user_id': user_id,
+            'book_id': ObjectId(book_id),
+            'pages_read': pages_read,
+            'start_page': old_page,
+            'end_page': current_page,
+            'date': datetime.utcnow(),
+            'notes': session_notes or '',
+            'duration_minutes': duration_minutes
+        }
+        current_app.mongo.db.reading_sessions.insert_one(session_data)
+
+        # Log activity
+        ActivityLogger.log_activity(
+            user_id=user_id,
+            action='progress_update',
+            description=f'Updated progress for book: {book["title"]}',
+            metadata={'book_id': book_id, 'current_page': current_page}
+        )
+
+        # Award points for progress
+        if pages_read > 0:
+            points = min(pages_read, 20)
+            RewardService.award_points(
+                user_id=user_id,
+                points=points,
+                source='nook',
+                description=f'Read {pages_read} pages in {book["title"]}',
+                category='reading_progress',
+                reference_id=str(book_id)
+            )
+
+        # Award points for completion
+        if 'finished_at' in update:
+            RewardService.award_points(
+                user_id=user_id,
+                points=50,
+                source='nook',
+                description=f'Finished reading "{book["title"]}"',
+                category='book_completion',
+                reference_id=str(book_id),
+                goal_type='book_finished'
+            )
+
+        return jsonify({'success': True, 'status': update['status']})
+    except Exception as e:
+        logger.error(f"Error updating progress for book {book_id}: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
